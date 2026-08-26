@@ -176,6 +176,33 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
       const { data: allProfiles } = await supabase.from('profiles').select('*');
       if (allProfiles) setUsers(allProfiles);
 
+      // Auto-accept any pending invitations for current user email
+      if (user.email) {
+        const { data: pendingInvs } = await supabase
+          .from('invitations')
+          .select('*')
+          .ilike('email', user.email)
+          .eq('status', 'INVITED');
+
+        if (pendingInvs && pendingInvs.length > 0) {
+          for (const inv of pendingInvs) {
+            await supabase.from('project_members').upsert({
+              project_id: inv.project_id,
+              user_id: user.id,
+              role: inv.role,
+              can_receive_tasks: inv.can_receive_tasks,
+              can_assign_tasks: inv.can_assign_tasks,
+              status: 'ACTIVE',
+            }, { onConflict: 'project_id,user_id' });
+
+            await supabase.from('invitations').update({
+              status: 'ACCEPTED',
+              accepted_at: new Date().toISOString(),
+            }).eq('id', inv.id);
+          }
+        }
+      }
+
       // Fetch Organization
       const { data: orgs } = await supabase.from('organizations').select('*').limit(1);
       const currentOrg = orgs && orgs.length > 0 ? orgs[0] : null;
@@ -189,6 +216,20 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
           team_leader: allProfiles?.find(u => u.id === p.team_leader_id),
         }));
         setProjects(enrichedProjects);
+
+        // Auto-heal: Ensure project leader and creator are in project_members
+        for (const p of projs) {
+          if (p.team_leader_id) {
+            await supabase.from('project_members').upsert({
+              project_id: p.id,
+              user_id: p.team_leader_id,
+              role: 'LEADER',
+              can_receive_tasks: true,
+              can_assign_tasks: true,
+              status: 'ACTIVE',
+            }, { onConflict: 'project_id,user_id' });
+          }
+        }
       }
 
       // Fetch Project Members
@@ -322,24 +363,37 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // 3. Permission checks
+  // 3. Permission checks - Bulletproof Leader & Assignee validation
   const canAssignInProject = (userId: string, projectId: string): boolean => {
     const project = projects.find(p => p.id === projectId);
     if (!project) return false;
+
+    // 1. Primary Team Leader
     if (project.team_leader_id === userId) return true;
 
+    // 2. Organization Owner / Creator
+    if (organization?.created_by === userId) return true;
+
+    // 3. Project Member check
     const pm = projectMembers.find(m => m.project_id === projectId && m.user_id === userId && m.status === 'ACTIVE');
-    if (!pm) return false;
-    if (pm.role === 'LEADER') return true;
+    
+    // If user has role 'LEADER' (support for multiple team leaders) -> ALWAYS allowed
+    if ((pm?.role as string) === 'LEADER') return true;
+
+    // Project policy rules
     if (project.assignment_rule === 'EVERYONE') return true;
-    if (project.assignment_rule === 'SELECTED_MEMBERS' && pm.can_assign_tasks) return true;
+    if (project.assignment_rule === 'SELECTED_MEMBERS' && (pm?.can_assign_tasks || (pm?.role as string) === 'LEADER')) return true;
 
     return false;
   };
 
   const canReceiveInProject = (userId: string, projectId: string): boolean => {
+    const project = projects.find(p => p.id === projectId);
+    if (project?.team_leader_id === userId) return true;
+
     const pm = projectMembers.find(m => m.project_id === projectId && m.user_id === userId && m.status === 'ACTIVE');
     if (!pm) return false;
+    if (pm.role === 'LEADER') return true;
     return pm.can_receive_tasks;
   };
 
@@ -347,16 +401,37 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
     const project = projects.find(p => p.id === projectId);
     if (!project) return false;
     if (project.team_leader_id === userId) return true;
+    if (organization?.created_by === userId) return true;
     const pm = projectMembers.find(m => m.project_id === projectId && m.user_id === userId);
     return pm?.role === 'LEADER';
   };
 
+  // Comprehensive Project Members getter: Combines project_members table + primary team leader
   const getProjectMembers = (projectId: string): ProjectMember[] => {
-    return projectMembers.filter(pm => pm.project_id === projectId && pm.status === 'ACTIVE');
+    const project = projects.find(p => p.id === projectId);
+    const activeMembers = projectMembers.filter(pm => pm.project_id === projectId && pm.status === 'ACTIVE');
+
+    // If primary team leader is missing from projectMembers table, synthesize it
+    if (project && project.team_leader_id && !activeMembers.some(m => m.user_id === project.team_leader_id)) {
+      const leaderProfile = users.find(u => u.id === project.team_leader_id) || (currentUser?.id === project.team_leader_id ? currentUser : undefined);
+      activeMembers.unshift({
+        id: `leader-${project.id}-${project.team_leader_id}`,
+        project_id: projectId,
+        user_id: project.team_leader_id,
+        role: 'LEADER',
+        can_receive_tasks: true,
+        can_assign_tasks: true,
+        status: 'ACTIVE',
+        joined_at: project.created_at,
+        profile: leaderProfile,
+      });
+    }
+
+    return activeMembers;
   };
 
   const getPermittedAssignees = (projectId: string): ProjectMember[] => {
-    return getProjectMembers(projectId).filter(pm => pm.can_receive_tasks);
+    return getProjectMembers(projectId).filter(pm => pm.can_receive_tasks || pm.role === 'LEADER');
   };
 
   // 4. Create Organization
@@ -374,16 +449,12 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: error.message };
     }
 
-    const { error: memError } = await supabase.from('organization_members').insert({
+    await supabase.from('organization_members').insert({
       organization_id: data.id,
       user_id: currentUser.id,
       role: 'OWNER',
       status: 'ACTIVE',
     });
-
-    if (memError) {
-      console.error('Error adding org member:', memError);
-    }
 
     await refreshData();
     return { success: true, organization: data };
@@ -436,14 +507,27 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: error.message };
     }
 
-    await supabase.from('project_members').insert({
+    // Insert Team Leader into project_members
+    await supabase.from('project_members').upsert({
       project_id: newProj.id,
       user_id: team_leader_id,
       role: 'LEADER',
       can_receive_tasks: true,
       can_assign_tasks: true,
       status: 'ACTIVE',
-    });
+    }, { onConflict: 'project_id,user_id' });
+
+    // Also insert Creator into project_members if different from team leader
+    if (currentUser.id !== team_leader_id) {
+      await supabase.from('project_members').upsert({
+        project_id: newProj.id,
+        user_id: currentUser.id,
+        role: 'LEADER',
+        can_receive_tasks: true,
+        can_assign_tasks: true,
+        status: 'ACTIVE',
+      }, { onConflict: 'project_id,user_id' });
+    }
 
     await refreshData();
     return { success: true, project: newProj };
@@ -466,7 +550,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
     await refreshData();
   };
 
-  // 8. Invite Member
+  // 8. Invite Member with Direct Adding for existing accounts
   const inviteMember = async ({
     projectId,
     email,
@@ -485,19 +569,23 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
     const project = projects.find(p => p.id === projectId);
     if (!project) return { success: false, error: 'Project not found.' };
 
-    const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const isLeader = role === 'LEADER';
+    const effectiveCanAssign = isLeader ? true : can_assign_tasks;
+    const effectiveCanReceive = isLeader ? true : can_receive_tasks;
+
+    const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
     if (existingUser) {
       const alreadyMember = projectMembers.some(pm => pm.project_id === projectId && pm.user_id === existingUser.id && pm.status === 'ACTIVE');
       if (alreadyMember) return { success: false, error: `${existingUser.full_name} is already a member of this project.` };
 
-      await supabase.from('project_members').insert({
+      await supabase.from('project_members').upsert({
         project_id: projectId,
         user_id: existingUser.id,
         role,
-        can_receive_tasks,
-        can_assign_tasks,
+        can_receive_tasks: effectiveCanReceive,
+        can_assign_tasks: effectiveCanAssign,
         status: 'ACTIVE',
-      });
+      }, { onConflict: 'project_id,user_id' });
 
       await refreshData();
       return { success: true };
@@ -506,10 +594,10 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
     const { data: inv, error } = await supabase.from('invitations').insert({
       organization_id: project.organization_id,
       project_id: projectId,
-      email,
+      email: email.trim(),
       role,
-      can_receive_tasks,
-      can_assign_tasks,
+      can_receive_tasks: effectiveCanReceive,
+      can_assign_tasks: effectiveCanAssign,
       invited_by: currentUser.id,
       status: 'INVITED',
     }).select().single();
@@ -519,10 +607,10 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
     // Server-side email notification
     await dispatchEmailNotification({
       type: 'INVITATION',
-      to: email,
+      to: email.trim(),
       projectId,
       data: {
-        recipientEmail: email,
+        recipientEmail: email.trim(),
         projectName: project.name,
         inviterName: currentUser.full_name,
         role,
@@ -540,14 +628,14 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
     const { data: invite } = await supabase.from('invitations').select('*').eq('token', token).eq('status', 'INVITED').single();
     if (!invite) return { success: false, error: 'Invalid or expired invitation token.' };
 
-    await supabase.from('project_members').insert({
+    await supabase.from('project_members').upsert({
       project_id: invite.project_id,
       user_id: currentUser.id,
       role: invite.role,
       can_receive_tasks: invite.can_receive_tasks,
       can_assign_tasks: invite.can_assign_tasks,
       status: 'ACTIVE',
-    });
+    }, { onConflict: 'project_id,user_id' });
 
     await supabase.from('invitations').update({
       status: 'ACCEPTED',
@@ -869,7 +957,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return { success: false, error: 'Task not found' };
 
-    if (task.assigned_to === currentUser.id && task.project?.team_leader_id !== currentUser.id) {
+    if (task.assigned_to === currentUser.id && task.project?.team_leader_id !== currentUser.id && organization?.created_by !== currentUser.id) {
       return { success: false, error: 'Forbidden (403): You cannot approve your own submitted task.' };
     }
 

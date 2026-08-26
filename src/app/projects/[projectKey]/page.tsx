@@ -37,6 +37,7 @@ export default function ProjectDetailPage() {
     projects,
     tasks,
     taskActivity,
+    invitations,
     getProjectMembers,
     updateMemberPermissions,
     updateProjectAssignmentRule,
@@ -67,6 +68,7 @@ export default function ProjectDetailPage() {
 
   const projectTasks = tasks.filter(t => t.project_id === project.id);
   const members = getProjectMembers(project.id);
+  const projectInvitations = invitations.filter(inv => inv.project_id === project.id && inv.status === 'INVITED');
   const projectActivities = taskActivity.filter(a => {
     const task = tasks.find(t => t.id === a.task_id);
     return task?.project_id === project.id;
@@ -562,6 +564,67 @@ export default function ProjectDetailPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pending Invitations Table if any */}
+            {projectInvitations.length > 0 && (
+              <div className="bg-white border border-[#E8E2D5] rounded-xl overflow-hidden shadow-2xs">
+                <div className="p-4 border-b border-[#E8E2D5] bg-amber-50/40 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900">
+                      Pending Invitations ({projectInvitations.length})
+                    </h3>
+                    <p className="text-xs text-amber-800">
+                      Invited members who have not yet logged in or accepted their project invite.
+                    </p>
+                  </div>
+                </div>
+
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#F4EFE6]/60 border-b border-[#E8E2D5] text-stone-600 font-bold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-3 px-4">Invited Email</th>
+                      <th className="py-3 px-4">Role Assigned</th>
+                      <th className="py-3 px-4 text-center">Can Receive?</th>
+                      <th className="py-3 px-4 text-center">Can Assign?</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4">Invited On</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {projectInvitations.map(inv => (
+                      <tr key={inv.id} className="hover:bg-amber-50/20 transition-colors">
+                        <td className="py-3 px-4 font-semibold text-stone-900 font-mono text-[11px]">
+                          {inv.email}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900">
+                            {inv.role}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${inv.can_receive_tasks ? 'bg-emerald-100 text-emerald-900' : 'bg-stone-100 text-stone-500'}`}>
+                            {inv.can_receive_tasks ? 'YES' : 'NO'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${inv.can_assign_tasks || inv.role === 'LEADER' ? 'bg-purple-100 text-purple-900' : 'bg-stone-100 text-stone-500'}`}>
+                            {inv.can_assign_tasks || inv.role === 'LEADER' ? 'YES' : 'NO'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900">
+                            INVITED (Pending)
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-stone-500 text-[11px]">
+                          {new Date(inv.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
