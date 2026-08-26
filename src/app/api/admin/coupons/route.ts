@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+const getAdminSupabase = () => {
+  const key = serviceRoleKey && serviceRoleKey !== 'your-service-role-key-here' ? serviceRoleKey : supabaseAnonKey;
+  return createClient(supabaseUrl, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+};
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,7 +19,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized admin access' }, { status: 401 });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = getAdminSupabase();
 
     const { data: coupons, error } = await supabase
       .from('coupons')
@@ -41,7 +49,7 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanCode = code.trim().toUpperCase();
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = getAdminSupabase();
 
     const { data: newCoupon, error } = await supabase
       .from('coupons')
@@ -78,7 +86,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Missing coupon ID' }, { status: 400 });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = getAdminSupabase();
     const { error } = await supabase.from('coupons').delete().eq('id', id);
 
     if (error) throw error;

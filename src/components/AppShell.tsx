@@ -6,8 +6,16 @@ import { Sidebar } from './Sidebar';
 import { AuthScreen } from './AuthScreen';
 import { Loader2 } from 'lucide-react';
 
+import { usePathname } from 'next/navigation';
+
 const InnerShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const pathname = usePathname();
   const { currentUser, isLoading } = useTrinetra();
+
+  // Completely isolate /losers stealth admin route from user app layout
+  if (pathname?.startsWith('/losers')) {
+    return <div className="min-h-screen bg-[#0E0C12] text-stone-100">{children}</div>;
+  }
 
   if (isLoading) {
     return (

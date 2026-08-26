@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+const getAdminSupabase = () => {
+  const key = serviceRoleKey && serviceRoleKey !== 'your-service-role-key-here' ? serviceRoleKey : supabaseAnonKey;
+  return createClient(supabaseUrl, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+};
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,7 +19,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized admin access' }, { status: 401 });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = getAdminSupabase();
 
     // Fetch all profiles
     const { data: profiles, error: pErr } = await supabase
@@ -72,7 +80,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid user ID or plan' }, { status: 400 });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = getAdminSupabase();
 
     let planExpiresAt: string | null = null;
     if (plan === 'PRO') {
