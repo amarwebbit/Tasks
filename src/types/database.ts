@@ -36,6 +36,9 @@ export interface UserProfile {
   email: string;
   full_name: string;
   avatar_url?: string;
+  role?: 'ADMIN' | 'USER';
+  plan?: 'FREE' | 'PRO';
+  plan_expires_at?: string | null;
   created_at: string;
 }
 
@@ -192,4 +195,43 @@ export interface EmailEvent {
   error_message?: string;
   sent_at?: string;
   created_at: string;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discount_type: 'PERCENTAGE' | 'FLAT';
+  discount_value: number;
+  max_uses: number;
+  used_count: number;
+  expires_at?: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface Payment {
+  id: string;
+  user_id: string;
+  order_id: string;
+  payment_id?: string;
+  amount: number;
+  currency: string;
+  plan: 'MONTHLY' | 'ANNUAL';
+  coupon_code?: string;
+  discount_applied: number;
+  status: 'CREATED' | 'SUCCESS' | 'FAILED';
+  created_at: string;
+}
+
+export interface AdminUserStats {
+  id: string;
+  email: string;
+  full_name: string;
+  role: 'ADMIN' | 'USER';
+  plan: 'FREE' | 'PRO';
+  plan_expires_at?: string | null;
+  created_at: string;
+  projects_count: number;
+  project_names: string[];
+  team_members_count: number;
 }

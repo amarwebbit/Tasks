@@ -14,8 +14,12 @@ import {
   Plus,
   FolderDot,
   LogOut,
+  Sparkles,
+  ShieldAlert,
+  Lock,
 } from 'lucide-react';
 import { CreateProjectModal } from './CreateProjectModal';
+import { PaywallModal } from './PaywallModal';
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
@@ -25,10 +29,12 @@ export const Sidebar: React.FC = () => {
     tasks,
     currentUser,
     notifications,
+    isPro,
     signOut,
   } = useTrinetra();
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
 
   const unreadNotifications = notifications.filter(n => !n.is_read).length;
   const myTasksCount = currentUser
@@ -45,6 +51,9 @@ export const Sidebar: React.FC = () => {
     { label: 'Reports & Export', href: '/reports', icon: FileSpreadsheet },
     { label: 'Team Directory', href: '/team', icon: Users },
     { label: 'Notifications', href: '/notifications', icon: Bell, badge: unreadNotifications },
+    ...(currentUser?.role === 'ADMIN'
+      ? [{ label: 'Admin Command', href: '/admin', icon: ShieldAlert }]
+      : []),
   ];
 
   return (
@@ -187,6 +196,30 @@ export const Sidebar: React.FC = () => {
               )}
             </div>
           </div>
+          {/* Pro Upgrade Banner for Free Users */}
+          {!isPro && (
+            <div className="p-3 mx-1 rounded-xl bg-linear-to-br from-purple-950 via-[#3B0F3C] to-purple-900 text-white shadow-sm space-y-2 border border-purple-800/40">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-amber-300">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Free Tier Active</span>
+                </div>
+                <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded font-mono text-purple-200">
+                  1 Proj / 2 Mem
+                </span>
+              </div>
+              <p className="text-[10px] text-purple-200 leading-tight">
+                Unlock unlimited projects, unlimited team members & 7-sheet Excel audit exports.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsPaywallOpen(true)}
+                className="w-full py-1.5 rounded-lg bg-linear-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-[11px] transition-colors cursor-pointer shadow-xs"
+              >
+                Upgrade • ₹99/mo or ₹399/yr
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Footer info */}
@@ -196,7 +229,7 @@ export const Sidebar: React.FC = () => {
             <span className="font-semibold text-stone-700">Trinetra Tasks</span>
           </div>
           <span className="text-[10px] bg-purple-50 text-purple-950 font-semibold px-1.5 py-0.5 rounded border border-purple-200">
-            Secure & Isolated
+            {isPro ? 'Pro Active' : 'Free Tier'}
           </span>
         </div>
       </aside>
@@ -204,6 +237,14 @@ export const Sidebar: React.FC = () => {
       <CreateProjectModal
         isOpen={isProjectModalOpen}
         onClose={() => setIsProjectModalOpen(false)}
+      />
+
+      <PaywallModal
+        isOpen={isPaywallOpen}
+        onClose={() => setIsPaywallOpen(false)}
+        title="Upgrade to Trinetra Pro"
+        subtitle="Scale your organization with unlimited projects, unlimited team members, and enterprise Excel workbooks."
+        highlightedFeature="GENERAL"
       />
     </>
   );

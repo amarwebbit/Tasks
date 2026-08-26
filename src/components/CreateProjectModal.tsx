@@ -1,9 +1,8 @@
-'use client';
-
 import React, { useState } from 'react';
 import { useTrinetra } from '@/lib/store';
 import { AssignmentRule } from '@/types/database';
-import { X, FolderPlus, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, FolderPlus, AlertCircle, CheckCircle2, Lock, Sparkles } from 'lucide-react';
+import { PaywallModal } from './PaywallModal';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -11,7 +10,7 @@ interface CreateProjectModalProps {
 }
 
 export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose }) => {
-  const { users, currentUser, createProject } = useTrinetra();
+  const { users, currentUser, projects, isPro, createProject } = useTrinetra();
 
   const [name, setName] = useState('');
   const [projectKey, setProjectKey] = useState('');
@@ -23,6 +22,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
+
+  const ownedProjects = projects.filter(p => p.team_leader_id === currentUser?.id);
+  const isLimitReached = !isPro && ownedProjects.length >= 1;
 
   if (!isOpen) return null;
 
@@ -116,6 +119,27 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Free Tier Project Limit Reached Banner */}
+          {isLimitReached && (
+            <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 space-y-3 shadow-2xs">
+              <div className="flex items-center gap-2 font-bold text-xs">
+                <Lock className="w-4 h-4 text-amber-700" />
+                <span>Free Plan Limit Reached (1 / 1 Projects Created)</span>
+              </div>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                You are on the Free tier which allows 1 project. Upgrade to <strong>Trinetra Pro</strong> (₹99/mo or ₹399/yr) to create unlimited projects and invite unlimited teammates.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsPaywallOpen(true)}
+                className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-linear-to-r from-purple-950 to-purple-800 hover:from-purple-900 hover:to-purple-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Upgrade to Pro — ₹99/mo or ₹399/yr</span>
+              </button>
+            </div>
+          )}
+
           {error && (
             <div className="flex items-start gap-3 p-3.5 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
               <AlertCircle className="w-5 h-5 shrink-0 text-red-600 mt-0.5" />
@@ -257,6 +281,14 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
           </div>
         </form>
       </div>
+
+      <PaywallModal
+        isOpen={isPaywallOpen}
+        onClose={() => setIsPaywallOpen(false)}
+        title="Unlock Unlimited Projects"
+        subtitle="Free tier allows 1 project. Upgrade to Pro to create unlimited projects and scale your workspace without limits."
+        highlightedFeature="PROJECTS"
+      />
     </div>
   );
 };

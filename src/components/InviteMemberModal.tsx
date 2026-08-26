@@ -1,9 +1,8 @@
-'use client';
-
 import React, { useState } from 'react';
 import { useTrinetra } from '@/lib/store';
 import { ProjectRole } from '@/types/database';
-import { X, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, UserPlus, AlertCircle, CheckCircle2, Lock, Sparkles } from 'lucide-react';
+import { PaywallModal } from './PaywallModal';
 
 interface InviteMemberModalProps {
   isOpen: boolean;
@@ -16,7 +15,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
   onClose,
   projectId,
 }) => {
-  const { projects, inviteMember } = useTrinetra();
+  const { projects, projectMembers, invitations, isPro, inviteMember } = useTrinetra();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<ProjectRole>('MEMBER');
   const [canReceiveTasks, setCanReceiveTasks] = useState(true);
@@ -24,10 +23,15 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
 
   if (!isOpen) return null;
 
   const project = projects.find(p => p.id === projectId);
+  const activeMembersCount = projectMembers.filter(m => m.project_id === projectId && m.status === 'ACTIVE').length;
+  const pendingInvitesCount = invitations.filter(inv => inv.project_id === projectId && inv.status === 'INVITED').length;
+  const totalOccupied = activeMembersCount + pendingInvitesCount;
+  const isLimitReached = !isPro && totalOccupied >= 2;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +81,12 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-purple-900">Project Onboarding</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-purple-900">Project Onboarding</span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isLimitReached ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-stone-100 text-stone-600'}`}>
+                  {isPro ? 'Pro: Unlimited' : `Free: ${totalOccupied}/2 Members`}
+                </span>
+              </div>
               <h2 className="text-lg font-semibold text-stone-900">Invite Member to {project?.name}</h2>
             </div>
           </div>
@@ -87,6 +96,27 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* 2-Member Free Limit Banner */}
+          {isLimitReached && (
+            <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 space-y-3 shadow-2xs">
+              <div className="flex items-center gap-2 font-bold text-xs">
+                <Lock className="w-4 h-4 text-amber-700" />
+                <span>Free Plan Limit Reached (2 / 2 Team Members)</span>
+              </div>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                Free projects allow up to 2 collaborators. Upgrade to <strong>Trinetra Pro</strong> (₹99/mo or ₹399/yr) to invite unlimited team members.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsPaywallOpen(true)}
+                className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-linear-to-r from-purple-950 to-purple-800 hover:from-purple-900 hover:to-purple-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Upgrade to Pro — ₹99/mo or ₹399/yr</span>
+              </button>
+            </div>
+          )}
+
           {error && (
             <div className="flex items-start gap-3 p-3.5 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
               <AlertCircle className="w-5 h-5 shrink-0 text-red-600 mt-0.5" />
@@ -181,6 +211,14 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
           </div>
         </form>
       </div>
+
+      <PaywallModal
+        isOpen={isPaywallOpen}
+        onClose={() => setIsPaywallOpen(false)}
+        title="Unlock Unlimited Team Members"
+        subtitle="Free projects are limited to 2 collaborators. Upgrade to Pro to invite your entire engineering and leadership team."
+        highlightedFeature="MEMBERS"
+      />
     </div>
   );
 };

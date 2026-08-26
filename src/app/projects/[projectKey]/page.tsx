@@ -29,8 +29,11 @@ import {
   Trash2,
   UserMinus,
   XCircle,
+  Lock,
+  Sparkles,
 } from 'lucide-react';
 import { AssignmentRule, ProjectRole } from '@/types/database';
+import { PaywallModal } from '@/components/PaywallModal';
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -51,6 +54,7 @@ export default function ProjectDetailPage() {
     cancelInvitation,
     deleteTask,
     currentUser,
+    isPro,
     canAssignInProject,
   } = useTrinetra();
 
@@ -61,6 +65,7 @@ export default function ProjectDetailPage() {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isDeletingProject, setIsDeletingProject] = useState(false);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
 
   const project = projects.find(p => p.project_key === projectKey);
 
@@ -106,6 +111,11 @@ export default function ProjectDetailPage() {
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   const handleDownloadReport = async (type: 'QUICK' | 'COMPLETE') => {
+    if (type === 'COMPLETE' && !isPro) {
+      setIsPaywallOpen(true);
+      return;
+    }
+
     try {
       setIsExporting(true);
       const res = await fetch('/api/reports/export', {
@@ -493,9 +503,14 @@ export default function ProjectDetailPage() {
             <div className="bg-white border border-[#E8E2D5] rounded-xl overflow-hidden shadow-2xs">
               <div className="p-4 border-b border-[#E8E2D5] bg-[#F4EFE6]/40 flex items-center justify-between">
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-stone-800">
-                    Granular Member Assignment Matrix
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-stone-800">
+                      Granular Member Assignment Matrix
+                    </h3>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${!isPro && members.length >= 2 ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-purple-100 text-purple-900'}`}>
+                      {isPro ? 'Pro: Unlimited Members' : `Free Tier: ${members.length} / 2 Members Used`}
+                    </span>
+                  </div>
                   <p className="text-xs text-stone-500">
                     Toggle individual permissions for receiving or assigning tasks.
                   </p>
@@ -835,6 +850,14 @@ export default function ProjectDetailPage() {
         isOpen={isInviteModalOpen}
         onClose={() => setIsInviteModalOpen(false)}
         projectId={project.id}
+      />
+
+      <PaywallModal
+        isOpen={isPaywallOpen}
+        onClose={() => setIsPaywallOpen(false)}
+        title="Upgrade to Trinetra Pro"
+        subtitle="Free tier allows 1 project and 2 members. Upgrade to Pro for unlimited team collaboration and complete 7-sheet Excel audit workbooks."
+        highlightedFeature="REPORTS"
       />
     </div>
   );

@@ -32,6 +32,8 @@ interface TrinetraContextType {
   notifications: NotificationItem[];
   invitations: Invitation[];
   users: UserProfile[];
+  isPro: boolean;
+  plan: 'FREE' | 'PRO';
 
   // Auth methods
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -1260,6 +1262,8 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
         notifications,
         invitations,
         users,
+        isPro: currentUser?.plan === 'PRO',
+        plan: currentUser?.plan || 'FREE',
 
         signIn,
         signUp,
