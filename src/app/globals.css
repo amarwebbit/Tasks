@@ -1,26 +1,95 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Custom Human-Crafted Warm Light Color Palette */
+    --bg-canvas: #FBF9F5;
+    --bg-surface: #FFFFFF;
+    --bg-subtle: #F4EFE6;
+    --bg-hover: #ECE5D8;
+    
+    --border-subtle: #E8E2D5;
+    --border-strong: #D5CCC0;
+    
+    --text-primary: #1F1D1A;
+    --text-secondary: #5C564E;
+    --text-muted: #8A8275;
+    
+    --brand-primary: #4A154B;
+    --brand-primary-hover: #3B0F3C;
+    --brand-accent: #6B21A8;
+    --brand-light: #F7EEF8;
+    
+    /* Semantic Status Tones */
+    --status-draft-text: #475569;
+    --status-draft-bg: #F1F5F9;
+    
+    --status-assigned-text: #3730A3;
+    --status-assigned-bg: #EEF2FF;
+    
+    --status-acknowledged-text: #854D0E;
+    --status-acknowledged-bg: #FEF9C3;
+    
+    --status-inprogress-text: #1E40AF;
+    --status-inprogress-bg: #DBEAFE;
+    
+    --status-blocked-text: #9A3412;
+    --status-blocked-bg: #FFEDD5;
+    
+    --status-submitted-text: #6B21A8;
+    --status-submitted-bg: #F3E8FF;
+    
+    --status-changes-text: #9F1239;
+    --status-changes-bg: #FFE4E6;
+    
+    --status-approved-text: #14532D;
+    --status-approved-bg: #DCFCE7;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-canvas);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Card & Surface elevation */
+.human-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(35, 30, 25, 0.04), 0 4px 12px rgba(35, 30, 25, 0.02);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.human-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 3px 8px rgba(35, 30, 25, 0.06), 0 8px 24px rgba(35, 30, 25, 0.04);
+}
+
+/* Badge styles */
+.badge-assigned { color: var(--status-assigned-text); background-color: var(--status-assigned-bg); }
+.badge-acknowledged { color: var(--status-acknowledged-text); background-color: var(--status-acknowledged-bg); }
+.badge-in_progress { color: var(--status-inprogress-text); background-color: var(--status-inprogress-bg); }
+.badge-blocked { color: var(--status-blocked-text); background-color: var(--status-blocked-bg); }
+.badge-submitted { color: var(--status-submitted-text); background-color: var(--status-submitted-bg); }
+.badge-changes_requested { color: var(--status-changes-text); background-color: var(--status-changes-bg); }
+.badge-approved { color: var(--status-approved-text); background-color: var(--status-approved-bg); }
