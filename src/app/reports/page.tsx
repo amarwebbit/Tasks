@@ -5,10 +5,11 @@ import { useTrinetra } from '@/lib/store';
 import { Header } from '@/components/Header';
 import { StatusBadge } from '@/components/StatusBadge';
 import { PriorityBadge } from '@/components/PriorityBadge';
-import { FileSpreadsheet, Download, Filter, CheckCircle2, AlertCircle } from 'lucide-react';
+import { FileSpreadsheet, Download, Filter, CheckCircle2, AlertCircle, Lock, Sparkles } from 'lucide-react';
+import { PaywallModal } from '@/components/PaywallModal';
 
 export default function ReportsPage() {
-  const { projects, users, tasks } = useTrinetra();
+  const { projects, users, tasks, isPro } = useTrinetra();
 
   const [projectId, setProjectId] = useState('ALL');
   const [assigneeId, setAssigneeId] = useState('ALL');
@@ -18,6 +19,7 @@ export default function ReportsPage() {
   const [completedOnly, setCompletedOnly] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
 
   // Compute filtered dataset for preview
   const filteredTasks = tasks.filter(t => {
@@ -31,6 +33,11 @@ export default function ReportsPage() {
   });
 
   const handleDownload = async (type: 'QUICK' | 'COMPLETE') => {
+    if (type === 'COMPLETE' && !isPro) {
+      setIsPaywallOpen(true);
+      return;
+    }
+
     try {
       setIsExporting(true);
       setExportMessage(null);
@@ -116,13 +123,23 @@ export default function ReportsPage() {
             </button>
           </div>
 
-          <div className="bg-white border-2 border-purple-200 rounded-xl p-6 shadow-2xs flex flex-col justify-between">
+          <div className={`bg-white border-2 rounded-xl p-6 shadow-2xs flex flex-col justify-between ${!isPro ? 'border-amber-300 bg-amber-50/20 relative overflow-hidden' : 'border-purple-200'}`}>
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 uppercase">
                   Complete Audit Workbook
                 </span>
-                <FileSpreadsheet className="w-5 h-5 text-purple-900" />
+                {!isPro ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-950 text-[10px] font-black uppercase">
+                    <Lock className="w-3 h-3 text-amber-700" />
+                    <span>Pro Only</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-950 text-[10px] font-bold">
+                    <Sparkles className="w-3 h-3 text-amber-500" />
+                    <span>Unlocked</span>
+                  </span>
+                )}
               </div>
               <h3 className="text-base font-bold text-stone-900">7-Sheet Comprehensive Audit Workbook</h3>
               <p className="text-xs text-stone-600 mt-1">
@@ -133,10 +150,23 @@ export default function ReportsPage() {
             <button
               onClick={() => handleDownload('COMPLETE')}
               disabled={isExporting}
-              className="mt-5 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#4A154B] hover:bg-[#3B0F3C] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              className={`mt-5 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer ${
+                !isPro
+                  ? 'bg-linear-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-stone-950 font-black'
+                  : 'bg-[#4A154B] hover:bg-[#3B0F3C] text-white'
+              }`}
             >
-              <Download className="w-4 h-4 text-white" />
-              <span>{isExporting ? 'Building 7-Sheet Workbook...' : 'Download Complete Workbook (.xlsx)'}</span>
+              {!isPro ? (
+                <>
+                  <Lock className="w-4 h-4" />
+                  <span>Unlock 7-Sheet Audit Workbook (Pro)</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 text-white" />
+                  <span>{isExporting ? 'Building 7-Sheet Workbook...' : 'Download Complete Workbook (.xlsx)'}</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -291,6 +321,14 @@ export default function ReportsPage() {
           </table>
         </div>
       </div>
+
+      <PaywallModal
+        isOpen={isPaywallOpen}
+        onClose={() => setIsPaywallOpen(false)}
+        title="Unlock Complete 7-Sheet Excel Audits"
+        subtitle="7-Sheet Workbook includes full immutable activity timeline, discussion comments, attachments, and email logs. Upgrade to Pro for unlimited exports."
+        highlightedFeature="REPORTS"
+      />
     </div>
   );
 }

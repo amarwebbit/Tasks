@@ -51,6 +51,11 @@ export default function SuperAdminPage() {
   const [unlockMessage, setUnlockMessage] = useState<string | null>(null);
 
   const fetchAdminData = async () => {
+    if (currentUser?.role !== 'ADMIN') {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const [usersRes, couponsRes] = await Promise.all([
@@ -75,8 +80,12 @@ export default function SuperAdminPage() {
   };
 
   useEffect(() => {
-    fetchAdminData();
-  }, []);
+    if (currentUser?.role === 'ADMIN') {
+      fetchAdminData();
+    } else {
+      setIsLoading(false);
+    }
+  }, [currentUser]);
 
   // Upgrade or Downgrade User Plan
   const handleUpdateUserPlan = async (userId: string, targetPlan: 'FREE' | 'PRO') => {
@@ -193,6 +202,78 @@ export default function SuperAdminPage() {
       (planFilter === 'FREE' && u.plan !== 'PRO');
     return matchesSearch && matchesPlan;
   });
+
+  if (!currentUser) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#FBF9F5] min-h-screen">
+        <div className="max-w-md w-full p-8 bg-white border border-[#E8E2D5] rounded-2xl shadow-xl text-center space-y-4">
+          <ShieldAlert className="w-12 h-12 text-purple-950 mx-auto" />
+          <h2 className="text-xl font-bold text-stone-900">Authentication Required</h2>
+          <p className="text-xs text-stone-500">Please sign in to your administrator account first.</p>
+          <Link href="/" className="inline-block px-4 py-2 bg-purple-950 text-white rounded-lg text-xs font-bold">
+            Sign In to Workspace
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Strict Admin Gate for Non-Admin Users
+  if (currentUser.role !== 'ADMIN') {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 bg-stone-950 min-h-screen text-white relative overflow-hidden">
+        <div className="absolute -top-32 -left-32 w-80 h-80 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="max-w-md w-full p-8 bg-stone-900/90 border border-white/10 rounded-2xl shadow-2xl space-y-6 backdrop-blur-xl relative z-10">
+          <div className="text-center space-y-2">
+            <div className="w-14 h-14 rounded-2xl bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center mx-auto shadow-lg shadow-purple-900/20">
+              <ShieldAlert className="w-7 h-7" />
+            </div>
+            <h2 className="text-xl font-black text-white tracking-tight">Super Admin Restricted Access</h2>
+            <p className="text-xs text-stone-400">
+              This terminal is strictly protected. Enter master security passkey to authenticate administrator session for <strong>{currentUser.email}</strong>.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[11px] font-bold text-stone-300 mb-1 uppercase tracking-wider">
+                Master Security Passkey
+              </label>
+              <input
+                type="password"
+                value={adminPasskey}
+                onChange={(e) => setAdminPasskey(e.target.value)}
+                placeholder="Enter master passkey..."
+                className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-stone-500 focus:outline-hidden focus:border-purple-400 font-mono"
+              />
+            </div>
+
+            {unlockMessage && (
+              <div className={`p-3 rounded-lg text-xs font-semibold ${unlockMessage.includes('confirmed') ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'}`}>
+                {unlockMessage}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleClaimAdmin}
+              disabled={isUnlocking || !adminPasskey}
+              className="w-full py-2.5 bg-linear-to-r from-purple-600 via-[#4A154B] to-purple-800 hover:from-purple-500 hover:to-purple-700 text-white font-bold text-xs rounded-xl shadow-lg transition-all cursor-pointer disabled:opacity-50"
+            >
+              {isUnlocking ? 'Verifying Credentials...' : 'Authenticate & Unlock Console'}
+            </button>
+
+            <Link
+              href="/"
+              className="w-full block py-2 text-center text-xs font-semibold text-stone-400 hover:text-white transition-colors"
+            >
+              Return to Workspace
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col min-h-screen bg-[#FBF9F5]">

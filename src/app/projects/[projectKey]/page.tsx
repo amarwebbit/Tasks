@@ -748,11 +748,24 @@ export default function ProjectDetailPage() {
                 </button>
               </div>
 
-              <div className="p-5 rounded-xl border border-purple-200 bg-purple-50/40 flex flex-col justify-between">
+              <div className={`p-5 rounded-xl border flex flex-col justify-between ${!isPro ? 'border-amber-300 bg-amber-50/40 relative overflow-hidden' : 'border-purple-200 bg-purple-50/40'}`}>
                 <div>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 uppercase">
-                    Complete 7-Sheet Workbook
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 uppercase">
+                      Complete 7-Sheet Workbook
+                    </span>
+                    {!isPro ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-950 text-[10px] font-black uppercase">
+                        <Lock className="w-3 h-3 text-amber-700" />
+                        <span>Pro Only</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-950 text-[10px] font-bold">
+                        <Sparkles className="w-3 h-3 text-amber-500" />
+                        <span>Unlocked</span>
+                      </span>
+                    )}
+                  </div>
                   <h4 className="text-sm font-bold text-stone-900 mt-2">Comprehensive Audit Report</h4>
                   <p className="text-xs text-stone-600 mt-1">
                     Multi-sheet workbook containing: 1. Project Summary, 2. Tasks, 3. Activity History, 4. Comments, 5. Team Members, 6. Attachments, 7. Email Logs.
@@ -761,10 +774,23 @@ export default function ProjectDetailPage() {
                 <button
                   onClick={() => handleDownloadReport('COMPLETE')}
                   disabled={isExporting}
-                  className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-purple-950 hover:bg-purple-900 text-white text-xs font-semibold shadow-xs"
+                  className={`mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold shadow-xs transition-all cursor-pointer ${
+                    !isPro
+                      ? 'bg-linear-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-stone-950'
+                      : 'bg-purple-950 hover:bg-purple-900 text-white'
+                  }`}
                 >
-                  <Download className="w-4 h-4" />
-                  <span>Download Complete XLSX Workbook</span>
+                  {!isPro ? (
+                    <>
+                      <Lock className="w-4 h-4" />
+                      <span>Unlock 7-Sheet Audit Workbook (Pro)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      <span>Download Complete XLSX Workbook</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
