@@ -10,8 +10,16 @@ import { CreateProjectModal } from '@/components/CreateProjectModal';
 import { ArrowUpRight, FolderPlus } from 'lucide-react';
 
 export default function OrganizationDashboard() {
-  const { organization, projects, tasks, users, taskActivity, currentUser } = useTrinetra();
+  const { organization, projects, projectMembers, tasks, users, taskActivity, currentUser } = useTrinetra();
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+
+  // Filter visible team users strictly to current user + members sharing at least 1 project
+  const sharedMemberUserIds = new Set([
+    currentUser?.id,
+    ...projectMembers.map(pm => pm.user_id),
+    ...projects.map(p => p.team_leader_id),
+  ].filter(Boolean));
+  const visibleTeamUsers = users.filter(u => sharedMemberUserIds.has(u.id));
 
   // Metrics
   const totalProjects = projects.length;
@@ -29,7 +37,7 @@ export default function OrganizationDashboard() {
   return (
     <div className="flex-1 flex flex-col">
       <Header
-        title={`${organization?.name || 'Trinetra'} — Command Center`}
+        title={`${organization?.name || (currentUser ? `${currentUser.full_name}'s Workspace` : 'Trinetra')} — Command Center`}
         subtitle="Multi-Project accountability, task flow velocity, and team workload summary"
       />
 
@@ -214,7 +222,7 @@ export default function OrganizationDashboard() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {users.map(u => {
+            {visibleTeamUsers.map(u => {
               const userTasks = tasks.filter(t => t.assigned_to === u.id);
               const userActive = userTasks.filter(t => t.status !== 'APPROVED').length;
               const userCompleted = userTasks.filter(t => t.status === 'APPROVED').length;

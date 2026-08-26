@@ -58,7 +58,7 @@ export const Sidebar: React.FC = () => {
             </div>
             <div>
               <h1 className="text-sm font-bold tracking-tight text-stone-900 leading-none">
-                {organization?.name || 'Trinetra Workspace'}
+                {organization?.name || (currentUser ? `${currentUser.full_name}'s Workspace` : 'Trinetra Workspace')}
               </h1>
               <span className="text-[11px] text-stone-500 font-medium">Task Accountability Engine</span>
             </div>
@@ -192,11 +192,11 @@ export const Sidebar: React.FC = () => {
         {/* Footer info */}
         <div className="p-3 border-t border-[#E8E2D5] bg-white/40 text-[11px] text-stone-500 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <FolderDot className="w-3.5 h-3.5 text-stone-400" />
-            <span>Trinetra Production</span>
+            <FolderDot className="w-3.5 h-3.5 text-purple-900" />
+            <span className="font-semibold text-stone-700">Trinetra Tasks</span>
           </div>
-          <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-1.5 py-0.5 rounded">
-            Supabase Cloud
+          <span className="text-[10px] bg-purple-50 text-purple-950 font-semibold px-1.5 py-0.5 rounded border border-purple-200">
+            Secure & Isolated
           </span>
         </div>
       </aside>
