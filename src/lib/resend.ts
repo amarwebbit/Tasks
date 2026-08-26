@@ -336,3 +336,69 @@ export function generatePaymentReceiptEmail({
     </div>
   `;
 }
+
+// 8. Admin Direct Upgrade Notification Email
+export function generateAdminUpgradeEmail({
+  recipientName,
+  recipientEmail,
+  planName,
+  validUntil,
+  appUrl,
+}: {
+  recipientName: string;
+  recipientEmail: string;
+  planName: string;
+  validUntil: string;
+  appUrl: string;
+}) {
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; background: #0E0C12; color: #F5F5F4; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
+      <div style="text-align: center; padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <div style="display: inline-block; background: linear-gradient(135deg, #9333EA, #D97706); color: #FFF; font-weight: 900; font-size: 14px; padding: 6px 14px; border-radius: 8px; margin-bottom: 12px; letter-spacing: 0.5px;">TRINETRA TASKS</div>
+        <h1 style="margin: 0; font-size: 22px; color: #FFFFFF; font-weight: 800;">🎉 Your Pro Subscription is Active!</h1>
+        <p style="margin: 6px 0 0 0; font-size: 13px; color: #34D399; font-weight: 700;">Complimentary Upgrade Granted by Administrator</p>
+      </div>
+
+      <div style="padding: 24px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: #D6D3D1;">Hello <strong>${recipientName}</strong> (${recipientEmail}),</p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: #D6D3D1;">
+          Great news! Your account has been upgraded to <strong>${planName}</strong> by the system administrator.
+        </p>
+
+        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; margin: 20px 0;">
+          <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #A8A29E;">Subscription Plan:</td>
+              <td style="padding: 8px 0; color: #FFFFFF; font-weight: bold; text-align: right;">${planName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #A8A29E;">Access Status:</td>
+              <td style="padding: 8px 0; color: #34D399; font-weight: 900; text-align: right;">PRO ACTIVE (UNLIMITED)</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #A8A29E;">Valid Until:</td>
+              <td style="padding: 8px 0; color: #FBBF24; font-weight: bold; text-align: right;">${validUntil}</td>
+            </tr>
+          </table>
+        </div>
+
+        <h3 style="margin: 20px 0 10px 0; font-size: 13px; color: #FBBF24; text-transform: uppercase; letter-spacing: 0.5px;">Your Unlocked Capabilities:</h3>
+        <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #D6D3D1; line-height: 1.8;">
+          <li><strong>Unlimited Projects:</strong> Create and coordinate across multiple isolated projects.</li>
+          <li><strong>Unlimited Team Members:</strong> Invite teammates and assign leaders without restrictions.</li>
+          <li><strong>Complete 7-Sheet Excel Audits:</strong> Export complete immutable workbooks anytime.</li>
+        </ul>
+      </div>
+
+      <div style="text-align: center; padding: 24px 0 12px 0;">
+        <a href="${appUrl}" style="background: linear-gradient(135deg, #9333EA, #7E22CE); color: #FFFFFF; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(147, 51, 234, 0.4);">
+          Launch Pro Workspace →
+        </a>
+      </div>
+
+      <p style="text-align: center; font-size: 11px; color: #78716C; margin: 16px 0 0 0;">
+        Trinetra Tasks • task.trinetraedu-ai.com
+      </p>
+    </div>
+  `;
+}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendEmailNotification, generateAdminUpgradeEmail } from '@/lib/resend';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -98,6 +99,35 @@ export async function POST(req: NextRequest) {
       .eq('id', userId);
 
     if (updateErr) throw updateErr;
+
+    // Fetch user to send celebratory email if upgraded to PRO
+    if (plan === 'PRO') {
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', userId)
+        .single();
+
+      if (userProfile?.email) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://task.trinetraedu-ai.com';
+        const emailHtml = generateAdminUpgradeEmail({
+          recipientName: userProfile.full_name || 'Valued User',
+          recipientEmail: userProfile.email,
+          planName: 'Trinetra Pro (Complimentary Upgrade)',
+          validUntil: planExpiresAt
+            ? new Date(planExpiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+            : '1 Year',
+          appUrl,
+        });
+
+        sendEmailNotification({
+          to: userProfile.email,
+          subject: `🎉 Congratulations! Your Trinetra Pro Subscription is Now Active`,
+          html: emailHtml,
+          emailType: 'ADMIN_PRO_UPGRADE',
+        }).catch(err => console.error('Error sending admin upgrade email:', err));
+      }
+    }
 
     return NextResponse.json({
       success: true,
