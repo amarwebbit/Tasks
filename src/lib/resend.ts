@@ -247,3 +247,92 @@ export function generateInvitationEmail({
     </div>
   `;
 }
+
+// 7. Official Payment Receipt & Tax Invoice Email
+export function generatePaymentReceiptEmail({
+  customerName,
+  customerEmail,
+  orderId,
+  paymentId,
+  planName,
+  amountPaid,
+  discountApplied,
+  validUntil,
+  invoiceNumber,
+  appUrl,
+}: {
+  customerName: string;
+  customerEmail: string;
+  orderId: string;
+  paymentId: string;
+  planName: string;
+  amountPaid: number;
+  discountApplied?: number;
+  validUntil: string;
+  invoiceNumber: string;
+  appUrl: string;
+}) {
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; background: #0E0C12; color: #F5F5F4; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
+      <div style="text-align: center; padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <div style="display: inline-block; background: linear-gradient(135deg, #9333EA, #D97706); color: #FFF; font-weight: 900; font-size: 14px; padding: 6px 14px; border-radius: 8px; margin-bottom: 12px; letter-spacing: 0.5px;">TRINETRA TASKS</div>
+        <h1 style="margin: 0; font-size: 22px; color: #FFFFFF; font-weight: 800;">Official Payment Receipt & Tax Invoice</h1>
+        <p style="margin: 6px 0 0 0; font-size: 13px; color: #A8A29E;">Invoice #: <span style="font-family: monospace; color: #FBBF24; font-weight: bold;">${invoiceNumber}</span></p>
+      </div>
+
+      <div style="padding: 24px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: #D6D3D1;">Hello <strong>${customerName}</strong> (${customerEmail}),</p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: #D6D3D1;">
+          Thank you for subscribing to <strong>${planName}</strong>! Your payment has been verified successfully. Your workspace is now upgraded with <strong>Full Pro Access</strong>.
+        </p>
+
+        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; margin: 20px 0;">
+          <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #A8A29E;">Plan Subscribed:</td>
+              <td style="padding: 8px 0; color: #FFFFFF; font-weight: bold; text-align: right;">${planName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #A8A29E;">Amount Paid:</td>
+              <td style="padding: 8px 0; color: #34D399; font-weight: 900; font-size: 16px; text-align: right;">₹${amountPaid}</td>
+            </tr>
+            ${discountApplied ? `
+            <tr>
+              <td style="padding: 8px 0; color: #A8A29E;">Discount Applied:</td>
+              <td style="padding: 8px 0; color: #FBBF24; font-weight: bold; text-align: right;">-₹${discountApplied}</td>
+            </tr>` : ''}
+            <tr>
+              <td style="padding: 8px 0; color: #A8A29E;">Payment ID:</td>
+              <td style="padding: 8px 0; color: #E7E5E4; font-family: monospace; text-align: right;">${paymentId}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #A8A29E;">Order ID:</td>
+              <td style="padding: 8px 0; color: #E7E5E4; font-family: monospace; text-align: right;">${orderId}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #A8A29E;">Pro Access Valid Until:</td>
+              <td style="padding: 8px 0; color: #FFFFFF; font-weight: bold; text-align: right;">${validUntil}</td>
+            </tr>
+          </table>
+        </div>
+
+        <h3 style="margin: 20px 0 10px 0; font-size: 13px; color: #FBBF24; text-transform: uppercase; letter-spacing: 0.5px;">All Promised Pro Capabilities Unlocked:</h3>
+        <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #D6D3D1; line-height: 1.8;">
+          <li><strong>Unlimited Projects:</strong> Create and manage unlimited projects without restrictions.</li>
+          <li><strong>Unlimited Team Members:</strong> Onboard entire organizations and multi-leader teams.</li>
+          <li><strong>Complete 7-Sheet Audit Workbook Exports:</strong> Full historical timeline, comments, files, and email audit logs.</li>
+        </ul>
+      </div>
+
+      <div style="text-align: center; padding: 24px 0 12px 0;">
+        <a href="${appUrl}" style="background: linear-gradient(135deg, #9333EA, #7E22CE); color: #FFFFFF; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(147, 51, 234, 0.4);">
+          Launch Pro Workspace →
+        </a>
+      </div>
+
+      <p style="text-align: center; font-size: 11px; color: #78716C; margin: 16px 0 0 0;">
+        Trinetra Tasks • task.trinetraedu-ai.com • Retain this email invoice for your tax & accounting records.
+      </p>
+    </div>
+  `;
+}

@@ -10,12 +10,12 @@ import {
   Tag,
   ShieldCheck,
   Zap,
-  Layers,
-  Users,
-  FileSpreadsheet,
-  ArrowRight,
-  Loader2,
   CheckCircle2,
+  ArrowRight,
+  Printer,
+  Download,
+  Mail,
+  Loader2,
 } from 'lucide-react';
 
 interface PaywallModalProps {
@@ -35,8 +35,8 @@ declare global {
 export const PaywallModal: React.FC<PaywallModalProps> = ({
   isOpen,
   onClose,
-  title = 'Upgrade to Trinetra Pro',
-  subtitle = 'Unlock unlimited projects, unlimited team members, and enterprise audit exports',
+  title = 'Unlock Trinetra Pro',
+  subtitle = 'Create unlimited projects, add unlimited team members, and export comprehensive 7-sheet Excel audit reports.',
   highlightedFeature = 'GENERAL',
 }) => {
   const { currentUser, refreshData } = useTrinetra();
@@ -45,14 +45,28 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{
     code: string;
+    discountType: string;
+    discountValue: number;
     discountAmount: number;
     finalPrice: number;
+    isFree: boolean;
   } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [receiptData, setReceiptData] = useState<{
+    invoiceNumber: string;
+    orderId: string;
+    paymentId: string;
+    planName: string;
+    amountPaid: number;
+    discountApplied?: number;
+    validUntil: string;
+    customerEmail: string;
+    customerName: string;
+  } | null>(null);
 
   if (!isOpen) return null;
 
@@ -94,11 +108,14 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
       if (!res.ok || data.error) {
         setCouponError(data.error || 'Invalid or expired coupon code');
         setAppliedCoupon(null);
-      } else if (data.discountAmount > 0) {
+      } else if (data.discountAmount > 0 || data.isFree) {
         setAppliedCoupon({
           code: data.couponCode,
+          discountType: data.discountType || 'PERCENTAGE',
+          discountValue: data.discountValue || data.discountAmount,
           discountAmount: data.discountAmount,
           finalPrice: data.amount,
+          isFree: Boolean(data.isFree),
         });
       } else {
         setCouponError('Coupon code not applicable');
@@ -149,12 +166,10 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
         });
 
         if (verifyRes.ok) {
+          const vData = await verifyRes.json();
+          if (vData.receipt) setReceiptData(vData.receipt);
           setIsSuccess(true);
           await refreshData();
-          setTimeout(() => {
-            setIsSuccess(false);
-            onClose();
-          }, 1500);
           return;
         }
       }
@@ -178,12 +193,10 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
         });
 
         if (verifyRes.ok) {
+          const vData = await verifyRes.json();
+          if (vData.receipt) setReceiptData(vData.receipt);
           setIsSuccess(true);
           await refreshData();
-          setTimeout(() => {
-            setIsSuccess(false);
-            onClose();
-          }, 1500);
           return;
         }
       }
@@ -220,12 +233,10 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
           });
 
           if (verifyRes.ok) {
+            const vData = await verifyRes.json();
+            if (vData.receipt) setReceiptData(vData.receipt);
             setIsSuccess(true);
             await refreshData();
-            setTimeout(() => {
-              setIsSuccess(false);
-              onClose();
-            }, 1500);
           } else {
             const errData = await verifyRes.json();
             setErrorMessage(errData.error || 'Payment verification failed');
@@ -263,14 +274,75 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
         </button>
 
         {isSuccess ? (
-          <div className="p-12 text-center space-y-4 my-auto">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
-              <CheckCircle2 className="w-8 h-8" />
+          <div className="p-6 sm:p-8 space-y-5 max-h-[85vh] overflow-y-auto">
+            <div className="text-center space-y-2">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Pro Subscription Active & Unlocked</span>
+              </div>
+              <h3 className="text-xl font-extrabold text-white">Payment Receipt & Tax Invoice</h3>
+              <p className="text-xs text-stone-400">
+                Invoice Reference: <span className="font-mono text-amber-300 font-bold">{receiptData?.invoiceNumber || 'TRI-INV-2026'}</span>
+              </p>
             </div>
-            <h3 className="text-2xl font-extrabold text-white">Welcome to Trinetra Pro!</h3>
-            <p className="text-sm text-stone-300">
-              Your account has been upgraded successfully. All project and team member limits are now unlocked.
-            </p>
+
+            {/* Official Invoice Box */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-3 text-xs">
+              <div className="flex items-center justify-between pb-2.5 border-b border-white/10">
+                <span className="text-stone-400">Subscribed Plan:</span>
+                <span className="text-white font-bold">{receiptData?.planName || (selectedPlan === 'ANNUAL' ? 'Trinetra Pro Annual' : 'Trinetra Pro Monthly')}</span>
+              </div>
+              <div className="flex items-center justify-between pb-2.5 border-b border-white/10">
+                <span className="text-stone-400">Amount Paid:</span>
+                <span className="text-emerald-400 font-black text-sm">₹{receiptData?.amountPaid ?? currentPrice}</span>
+              </div>
+              {Boolean(receiptData?.discountApplied && receiptData.discountApplied > 0) && (
+                <div className="flex items-center justify-between pb-2.5 border-b border-white/10">
+                  <span className="text-stone-400">Coupon Discount:</span>
+                  <span className="text-amber-400 font-bold">-₹{receiptData?.discountApplied}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between pb-2.5 border-b border-white/10">
+                <span className="text-stone-400">Payment ID:</span>
+                <span className="text-stone-300 font-mono text-[11px]">{receiptData?.paymentId || 'pay_verified'}</span>
+              </div>
+              <div className="flex items-center justify-between pb-2.5 border-b border-white/10">
+                <span className="text-stone-400">Billed To:</span>
+                <span className="text-white font-medium">{currentUser?.full_name} ({currentUser?.email})</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-stone-400">Access Valid Until:</span>
+                <span className="text-amber-300 font-bold">{receiptData?.validUntil || 'Active'}</span>
+              </div>
+            </div>
+
+            {/* Email Dispatch Notice */}
+            <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center gap-2.5 text-xs text-purple-200">
+              <Mail className="w-4 h-4 text-purple-300 shrink-0" />
+              <span>Official invoice receipt dispatched to <strong>{currentUser?.email}</strong>.</span>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex-1 flex items-center justify-center gap-2 py-3 bg-white/10 hover:bg-white/15 text-white font-bold text-xs rounded-xl border border-white/10 transition-colors cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print Invoice</span>
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 flex items-center justify-center gap-2 py-3 bg-linear-to-r from-purple-600 via-[#4A154B] to-purple-800 hover:from-purple-500 hover:to-purple-700 text-white font-black text-xs rounded-xl shadow-lg transition-all cursor-pointer"
+              >
+                <span>Launch Pro Workspace →</span>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="p-6 sm:p-8 space-y-6">
