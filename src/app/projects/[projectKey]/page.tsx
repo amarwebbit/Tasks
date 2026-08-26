@@ -515,7 +515,52 @@ export default function ProjectDetailPage() {
                     Toggle individual permissions for receiving or assigning tasks.
                   </p>
                 </div>
+
+                {/* Invite Member Trigger Button */}
+                {canManage && (
+                  <div>
+                    {!isPro && members.length >= 2 ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsPaywallOpen(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold transition-all shadow-xs cursor-pointer"
+                      >
+                        <Lock className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Invite Member (Limit 2/2)</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setIsInviteModalOpen(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-950 hover:bg-purple-900 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        <span>Invite Member</span>
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {/* Free Limit Exceeded Alert Banner */}
+              {!isPro && members.length > 2 && (
+                <div className="p-3.5 bg-amber-50 border-b border-amber-200 flex items-center justify-between gap-3 text-xs text-amber-950">
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-amber-700 shrink-0" />
+                    <span>
+                      <strong>Free Limit Exceeded:</strong> This project currently has <strong>{members.length} members</strong> (Free tier allows max 2). Please upgrade to Pro or remove extra members.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsPaywallOpen(true)}
+                    className="shrink-0 flex items-center gap-1 px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-md font-bold text-xs shadow-xs cursor-pointer"
+                  >
+                    <Sparkles className="w-3 h-3 text-amber-200" />
+                    <span>Upgrade to Pro</span>
+                  </button>
+                </div>
+              )}
 
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#F4EFE6]/60 border-b border-[#E8E2D5] text-stone-600 font-bold uppercase tracking-wider text-[10px]">

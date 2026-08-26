@@ -566,6 +566,15 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
   }) => {
     if (!supabase || !currentUser) return { success: false, error: 'Not authenticated' };
 
+    // Enforce 1-project limit for free tier
+    const isProUser = currentUser?.plan === 'PRO';
+    if (!isProUser && projects.length >= 1) {
+      return {
+        success: false,
+        error: 'Free Plan Limit: Free tier allows a maximum of 1 project. Please upgrade to Trinetra Pro (₹99/mo or ₹399/yr) to create unlimited projects.',
+      };
+    }
+
     let orgId = organization?.id;
     if (!orgId) {
       const orgRes = await createOrganization('Trinetra Workspace');
@@ -705,6 +714,19 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
 
     const project = projects.find(p => p.id === projectId);
     if (!project) return { success: false, error: 'Project not found.' };
+
+    // Enforce 2-member limit for free tier
+    const isProUser = currentUser?.plan === 'PRO';
+    if (!isProUser) {
+      const activeMembers = projectMembers.filter(pm => pm.project_id === projectId && pm.status === 'ACTIVE');
+      const pendingInvites = invitations.filter(inv => inv.project_id === projectId && inv.status === 'INVITED');
+      if (activeMembers.length + pendingInvites.length >= 2) {
+        return {
+          success: false,
+          error: 'Free Plan Limit: Free projects can have a maximum of 2 team members (1 Leader + 1 Member). Upgrade to Trinetra Pro (₹99/mo or ₹399/yr) to add more members.',
+        };
+      }
+    }
 
     const isLeader = role === 'LEADER';
     const effectiveCanAssign = isLeader ? true : can_assign_tasks;

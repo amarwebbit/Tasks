@@ -24,8 +24,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
 
-  const ownedProjects = projects.filter(p => p.team_leader_id === currentUser?.id);
-  const isLimitReached = !isPro && ownedProjects.length >= 1;
+  const isLimitReached = !isPro && projects.length >= 1;
 
   if (!isOpen) return null;
 
@@ -47,6 +46,13 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (isLimitReached) {
+      setIsPaywallOpen(true);
+      setError('Free tier is strictly limited to 1 project. Please upgrade to Pro to create unlimited projects.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     if (!name.trim()) {
@@ -109,7 +115,12 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
               <FolderPlus className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-purple-900">Multi-Project Architecture</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-purple-900">Multi-Project Architecture</span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isLimitReached ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-stone-100 text-stone-600'}`}>
+                  {isPro ? 'Pro: Unlimited' : `Free: ${projects.length}/1 Project`}
+                </span>
+              </div>
               <h2 className="text-lg font-semibold text-stone-900">Create New Project</h2>
             </div>
           </div>
@@ -154,89 +165,133 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
             </div>
           )}
 
-          {/* Project Name & Project Key */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
-                Project Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Trinetra Shiksha"
-                value={name}
-                onChange={e => handleNameChange(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
-                Project Key <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                maxLength={6}
-                placeholder="e.g. TRI"
-                value={projectKey}
-                onChange={e => setProjectKey(e.target.value.toUpperCase())}
-                className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-sm font-mono text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800 uppercase"
-              />
-              <p className="text-[11px] text-stone-500 mt-1">Tasks: {projectKey || 'KEY'}-001</p>
-            </div>
+          {/* Project Name */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
+              Project Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              disabled={isLimitReached}
+              placeholder="e.g. Shiksha Foundation Mobile App"
+              value={name}
+              onChange={e => handleNameChange(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800 disabled:bg-stone-100 disabled:cursor-not-allowed"
+            />
+          </div>
+
+          {/* Project Key */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
+              Project Key (Prefix for Task IDs) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              disabled={isLimitReached}
+              placeholder="e.g. SHI, EDU, PROJ"
+              value={projectKey}
+              onChange={e => setProjectKey(e.target.value.toUpperCase())}
+              maxLength={10}
+              className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-sm font-mono uppercase text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800 disabled:bg-stone-100 disabled:cursor-not-allowed"
+            />
+            <p className="text-[11px] text-stone-400 mt-1">Tasks will be labeled: {projectKey || 'KEY'}-101, {projectKey || 'KEY'}-102</p>
           </div>
 
           {/* Description */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
-              Description
+              Description / Objectives
             </label>
             <textarea
-              rows={2}
-              placeholder="Primary purpose, deliverables, and scope of this project..."
+              rows={3}
+              disabled={isLimitReached}
+              placeholder="Describe the deliverables, stakeholders, and scope of this project..."
               value={description}
               onChange={e => setDescription(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800"
+              className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800 disabled:bg-stone-100 disabled:cursor-not-allowed"
             />
           </div>
 
-          {/* Team Leader & Assignment Policy */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
-                Team Leader <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={teamLeaderId}
-                onChange={e => setTeamLeaderId(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800"
-              >
-                {users.length === 0 && currentUser && (
-                  <option value={currentUser.id}>{currentUser.full_name} ({currentUser.email})</option>
-                )}
-                {users.map(u => (
+          {/* Team Leader Selection */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
+              Project Team Leader <span className="text-red-500">*</span>
+            </label>
+            <select
+              disabled={isLimitReached}
+              value={teamLeaderId}
+              onChange={e => setTeamLeaderId(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800 disabled:bg-stone-100 disabled:cursor-not-allowed"
+            >
+              <option value="">Select Team Leader</option>
+              {currentUser && (
+                <option value={currentUser.id}>
+                  {currentUser.full_name} ({currentUser.email}) [You]
+                </option>
+              )}
+              {users
+                .filter(u => u.id !== currentUser?.id)
+                .map(u => (
                   <option key={u.id} value={u.id}>
                     {u.full_name} ({u.email})
                   </option>
                 ))}
-              </select>
-            </div>
+            </select>
+            <p className="text-[11px] text-stone-400 mt-1">The Team Leader has full administrative oversight over tasks in this project.</p>
+          </div>
 
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
-                Task Assignment Policy
-              </label>
-              <select
-                value={assignmentRule}
-                onChange={e => setAssignmentRule(e.target.value as AssignmentRule)}
-                className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800"
-              >
-                <option value="LEADER_ONLY">Team Leader Only (Default)</option>
-                <option value="SELECTED_MEMBERS">Team Leader + Selected Members</option>
-                <option value="EVERYONE">Everyone in Project</option>
-              </select>
+          {/* Assignment Governance Rule */}
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600">
+              Task Assignment Permission Model
+            </label>
+            <div className="space-y-2">
+              {[
+                {
+                  rule: 'LEADER_ONLY',
+                  title: 'Team Leader Only (Recommended)',
+                  desc: 'Only the designated project Team Leader can assign tasks to members.',
+                },
+                {
+                  rule: 'SELECTED_MEMBERS',
+                  title: 'Selected Members',
+                  desc: 'Team Leader + specific members granted "Can Assign Tasks" permission.',
+                },
+                {
+                  rule: 'EVERYONE',
+                  title: 'Everyone in Project',
+                  desc: 'All project members can create and assign tasks to each other.',
+                },
+              ].map(opt => (
+                <label
+                  key={opt.rule}
+                  className={`flex items-start gap-3 p-3 rounded-lg border text-xs cursor-pointer transition-all ${
+                    isLimitReached
+                      ? 'opacity-60 cursor-not-allowed bg-stone-50 border-stone-200'
+                      : assignmentRule === opt.rule
+                      ? 'border-purple-900 bg-purple-50/50 text-purple-950 font-medium'
+                      : 'border-stone-200 bg-white hover:border-stone-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="assignmentRule"
+                    disabled={isLimitReached}
+                    value={opt.rule}
+                    checked={assignmentRule === opt.rule}
+                    onChange={e => setAssignmentRule(e.target.value as AssignmentRule)}
+                    className="mt-0.5 text-purple-900 focus:ring-purple-800"
+                  />
+                  <div>
+                    <span className="font-semibold text-stone-900 block">{opt.title}</span>
+                    <span className="text-[11px] text-stone-500">{opt.desc}</span>
+                  </div>
+                </label>
+              ))}
             </div>
           </div>
 
-          {/* Dates */}
+          {/* Schedule */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
@@ -244,9 +299,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
               </label>
               <input
                 type="date"
+                disabled={isLimitReached}
                 value={startDate}
                 onChange={e => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800"
+                className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800 disabled:bg-stone-100 disabled:cursor-not-allowed"
               />
             </div>
             <div>
@@ -255,9 +311,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
               </label>
               <input
                 type="date"
+                disabled={isLimitReached}
                 value={targetDate}
                 onChange={e => setTargetDate(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800"
+                className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800 disabled:bg-stone-100 disabled:cursor-not-allowed"
               />
             </div>
           </div>
@@ -271,13 +328,24 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || isSuccess}
-              className="px-5 py-2 text-sm font-medium text-white bg-purple-950 hover:bg-purple-900 rounded-lg shadow-sm transition-all disabled:opacity-50"
-            >
-              {isSubmitting ? 'Creating...' : isSuccess ? 'Created!' : 'Create Project'}
-            </button>
+            {isLimitReached ? (
+              <button
+                type="button"
+                onClick={() => setIsPaywallOpen(true)}
+                className="flex items-center gap-1.5 px-5 py-2 text-sm font-bold text-white bg-linear-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 rounded-lg shadow-sm transition-all cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+                <span>Upgrade to Create More Projects</span>
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={isSubmitting || isSuccess}
+                className="px-5 py-2 text-sm font-medium text-white bg-purple-950 hover:bg-purple-900 rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmitting ? 'Creating...' : isSuccess ? 'Created!' : 'Create Project'}
+              </button>
+            )}
           </div>
         </form>
       </div>

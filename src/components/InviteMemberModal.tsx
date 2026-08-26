@@ -36,6 +36,13 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (isLimitReached) {
+      setIsPaywallOpen(true);
+      setError('Free tier is limited to 2 team members per project (1 Leader + 1 Member). Upgrade to Pro to add more members.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     if (!email.trim() || !email.includes('@')) {
@@ -101,10 +108,10 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
             <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 space-y-3 shadow-2xs">
               <div className="flex items-center gap-2 font-bold text-xs">
                 <Lock className="w-4 h-4 text-amber-700" />
-                <span>Free Plan Limit Reached (2 / 2 Team Members)</span>
+                <span>Free Plan Limit Reached ({totalOccupied} / 2 Members)</span>
               </div>
               <p className="text-xs text-amber-800 leading-relaxed">
-                Free projects allow up to 2 collaborators. Upgrade to <strong>Trinetra Pro</strong> (₹99/mo or ₹399/yr) to invite unlimited team members.
+                Free projects allow a maximum of <strong>2 team members</strong> (1 Team Leader + 1 Member). Upgrade to <strong>Trinetra Pro</strong> (₹99/mo or ₹399/yr) to add unlimited team members.
               </p>
               <button
                 type="button"
@@ -138,10 +145,11 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
             </label>
             <input
               type="email"
+              disabled={isLimitReached}
               placeholder="e.g. rahul@example.com"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800"
+              className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800 disabled:bg-stone-100 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -152,8 +160,9 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
             </label>
             <select
               value={role}
+              disabled={isLimitReached}
               onChange={e => setRole(e.target.value as ProjectRole)}
-              className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800"
+              className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800 disabled:bg-stone-100 disabled:cursor-not-allowed"
             >
               <option value="MEMBER">Member (Contributor)</option>
               <option value="LEADER">Team Leader (Full Control)</option>
@@ -172,9 +181,10 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
               </div>
               <input
                 type="checkbox"
+                disabled={isLimitReached}
                 checked={canReceiveTasks}
                 onChange={e => setCanReceiveTasks(e.target.checked)}
-                className="w-4 h-4 text-purple-900 rounded border-stone-300 focus:ring-purple-800"
+                className="w-4 h-4 text-purple-900 rounded border-stone-300 focus:ring-purple-800 disabled:cursor-not-allowed"
               />
             </label>
 
@@ -185,9 +195,10 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
               </div>
               <input
                 type="checkbox"
+                disabled={isLimitReached}
                 checked={canAssignTasks}
                 onChange={e => setCanAssignTasks(e.target.checked)}
-                className="w-4 h-4 text-purple-900 rounded border-stone-300 focus:ring-purple-800"
+                className="w-4 h-4 text-purple-900 rounded border-stone-300 focus:ring-purple-800 disabled:cursor-not-allowed"
               />
             </label>
           </div>
@@ -201,13 +212,24 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || isSuccess}
-              className="px-5 py-2 text-sm font-medium text-white bg-purple-950 hover:bg-purple-900 rounded-lg shadow-sm transition-all disabled:opacity-50"
-            >
-              {isSubmitting ? 'Sending...' : isSuccess ? 'Invited!' : 'Send Invitation'}
-            </button>
+            {isLimitReached ? (
+              <button
+                type="button"
+                onClick={() => setIsPaywallOpen(true)}
+                className="flex items-center gap-1.5 px-5 py-2 text-sm font-bold text-white bg-linear-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 rounded-lg shadow-sm transition-all cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+                <span>Upgrade to Invite More Members</span>
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={isSubmitting || isSuccess}
+                className="px-5 py-2 text-sm font-medium text-white bg-purple-950 hover:bg-purple-900 rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmitting ? 'Sending...' : isSuccess ? 'Invited!' : 'Send Invitation'}
+              </button>
+            )}
           </div>
         </form>
       </div>

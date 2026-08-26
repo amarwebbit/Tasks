@@ -63,9 +63,14 @@ export const Sidebar: React.FC = () => {
               T
             </div>
             <div>
-              <h1 className="text-sm font-bold tracking-tight text-stone-900 leading-none">
-                {organization?.name || (currentUser ? `${currentUser.full_name}'s Workspace` : 'Trinetra Workspace')}
-              </h1>
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-sm font-bold tracking-tight text-stone-900 leading-none truncate max-w-[120px]">
+                  {organization?.name || (currentUser ? `${currentUser.full_name}'s Workspace` : 'Trinetra Workspace')}
+                </h1>
+                <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-[9px] tracking-wider uppercase shrink-0">
+                  BETA
+                </span>
+              </div>
               <span className="text-[11px] text-stone-500 font-medium">Task Accountability Engine</span>
             </div>
           </div>
@@ -148,11 +153,15 @@ export const Sidebar: React.FC = () => {
                 Projects ({projects.length})
               </span>
               <button
-                onClick={() => setIsProjectModalOpen(true)}
-                className="p-1 rounded-md text-stone-500 hover:text-purple-900 hover:bg-stone-200 transition-colors"
-                title="Create New Project"
+                onClick={() => (!isPro && projects.length >= 1 ? setIsPaywallOpen(true) : setIsProjectModalOpen(true))}
+                className="p-1 rounded-md text-stone-500 hover:text-purple-900 hover:bg-stone-200 transition-colors cursor-pointer"
+                title={!isPro && projects.length >= 1 ? "Free Limit: 1 Project (Click to Upgrade)" : "Create New Project"}
               >
-                <Plus className="w-3.5 h-3.5" />
+                {!isPro && projects.length >= 1 ? (
+                  <Lock className="w-3.5 h-3.5 text-amber-600" />
+                ) : (
+                  <Plus className="w-3.5 h-3.5" />
+                )}
               </button>
             </div>
 

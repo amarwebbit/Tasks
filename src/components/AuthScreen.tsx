@@ -52,6 +52,10 @@ export const AuthScreen: React.FC = () => {
       <div className="max-w-md w-full space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black uppercase tracking-wider mb-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse" />
+            <span>Public Beta v0.9.5</span>
+          </div>
           <div className="w-12 h-12 rounded-xl bg-[#4A154B] text-white flex items-center justify-center font-bold text-xl mx-auto shadow-sm">
             T
           </div>
