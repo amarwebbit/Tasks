@@ -117,12 +117,15 @@ export async function POST(req: NextRequest) {
       console.error('Error saving payment record:', paymentErr);
     }
 
+    const recipientEmail = userProfile?.email || body.userEmail || '';
+    const recipientName = userProfile?.full_name || body.userName || 'Subscriber';
+
     // 4. Automated Branded Email Invoice & Receipt Dispatch
-    if (userProfile?.email) {
+    if (recipientEmail) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://task.trinetraedu-ai.com';
       const receiptHtml = generatePaymentReceiptEmail({
-        customerName: userProfile.full_name || 'Valued Subscriber',
-        customerEmail: userProfile.email,
+        customerName: recipientName,
+        customerEmail: recipientEmail,
         orderId: finalOrderId,
         paymentId: finalPaymentId,
         planName: planDisplayName,
@@ -134,7 +137,7 @@ export async function POST(req: NextRequest) {
       });
 
       sendEmailNotification({
-        to: userProfile.email,
+        to: recipientEmail,
         subject: `Payment Receipt & Invoice: ${planDisplayName} [${invoiceNumber}]`,
         html: receiptHtml,
         emailType: 'PAYMENT_RECEIPT',
@@ -154,8 +157,8 @@ export async function POST(req: NextRequest) {
         amountPaid: amount || 0,
         discountApplied: discountApplied || 0,
         validUntil: expiryDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
-        customerEmail: userProfile?.email || '',
-        customerName: userProfile?.full_name || 'Subscriber',
+        customerEmail: recipientEmail,
+        customerName: recipientName,
       },
     });
   } catch (err: any) {
