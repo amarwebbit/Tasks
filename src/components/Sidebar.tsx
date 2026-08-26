@@ -228,15 +228,31 @@ export const Sidebar: React.FC = () => {
           )}
         </div>
 
-        {/* Footer info */}
-        <div className="p-3 border-t border-[#E8E2D5] bg-white/40 text-[11px] text-stone-500 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <FolderDot className="w-3.5 h-3.5 text-purple-900" />
-            <span className="font-semibold text-stone-700">Trinetra Tasks</span>
+        {/* Footer info & Links */}
+        <div className="p-3 border-t border-[#E8E2D5] bg-white/50 text-[11px] text-stone-500 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <FolderDot className="w-3.5 h-3.5 text-purple-900" />
+              <span className="font-semibold text-stone-700">Trinetra Tasks</span>
+            </div>
+            <span className="text-[10px] bg-purple-50 text-purple-950 font-semibold px-1.5 py-0.5 rounded border border-purple-200">
+              {isPro ? 'Pro Active' : 'Free Tier'}
+            </span>
           </div>
-          <span className="text-[10px] bg-purple-50 text-purple-950 font-semibold px-1.5 py-0.5 rounded border border-purple-200">
-            {isPro ? 'Pro Active' : 'Free Tier'}
-          </span>
+
+          <div className="flex items-center justify-between text-[10px] text-stone-400 pt-1 border-t border-stone-100">
+            <Link href="/faq" className="hover:text-purple-900 transition-colors font-medium">
+              FAQ
+            </Link>
+            <span>•</span>
+            <Link href="/refund-policy" className="hover:text-purple-900 transition-colors font-medium">
+              Refund Policy
+            </Link>
+            <span>•</span>
+            <a href="mailto:support@trinetraedu-ai.com" className="hover:text-purple-900 transition-colors font-medium">
+              Support
+            </a>
+          </div>
         </div>
       </aside>
 

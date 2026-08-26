@@ -54,6 +54,7 @@ export default function ProjectDetailPage() {
     cancelInvitation,
     deleteTask,
     currentUser,
+    users,
     isPro,
     canAssignInProject,
   } = useTrinetra();
@@ -92,6 +93,8 @@ export default function ProjectDetailPage() {
   const isTeamLeader = project.team_leader_id === currentUser?.id;
   const isOrgOwner = organization?.created_by === currentUser?.id;
   const canManage = isTeamLeader || isOrgOwner;
+  const projectLeader = users.find(u => u.id === project.team_leader_id);
+  const isThisProjectPro = isPro || projectLeader?.plan === 'PRO';
 
   // Filtered tasks for the Tasks list tab
   const filteredTasks = projectTasks.filter(t => {
@@ -434,12 +437,12 @@ export default function ProjectDetailPage() {
           </div>
         )}
 
-        {/* ----------------- TAB: TEAM & ASSIGNMENT PERMISSIONS ----------------- */}
+        {/* ----------------- TAB: TEAM & PERMISSIONS ----------------- */}
         {activeTab === 'team' && (
           <div className="space-y-6">
-            {/* Assignment Rule Configuration Box */}
-            <div className="p-5 bg-white border border-[#E8E2D5] rounded-xl shadow-2xs space-y-4">
-              <div className="flex items-start justify-between">
+            {/* Assignment Rule Configuration Box - Visible only to Team Leaders & Org Owners */}
+            {canManage && (
+              <div className="p-5 bg-white border border-[#E8E2D5] rounded-xl shadow-2xs space-y-4">
                 <div>
                   <span className="text-[11px] font-bold uppercase tracking-wider text-purple-900">Project Governance</span>
                   <h3 className="text-sm font-bold text-stone-900 mt-0.5">Who can assign tasks in this project?</h3>
@@ -447,57 +450,50 @@ export default function ProjectDetailPage() {
                     Controls whether ordinary members can delegate tasks to other teammates or if only the Team Leader assigns.
                   </p>
                 </div>
-                <button
-                  onClick={() => setIsInviteModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#4A154B] hover:bg-[#3B0F3C] text-white rounded-lg text-xs font-semibold shadow-xs"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span>Invite Member</span>
-                </button>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
-                {[
-                  {
-                    rule: 'LEADER_ONLY',
-                    title: 'Team Leader Only (Default)',
-                    desc: 'Only Team Leader Amar can assign tasks to team members.',
-                  },
-                  {
-                    rule: 'SELECTED_MEMBERS',
-                    title: 'Selected Members',
-                    desc: 'Team Leader + members with explicit "Can Assign Tasks" permission.',
-                  },
-                  {
-                    rule: 'EVERYONE',
-                    title: 'Everyone in Project',
-                    desc: 'All project members can create and assign tasks freely.',
-                  },
-                ].map(opt => (
-                  <label
-                    key={opt.rule}
-                    onClick={() => updateProjectAssignmentRule(project.id, opt.rule as AssignmentRule)}
-                    className={`p-3.5 rounded-lg border text-xs cursor-pointer transition-all ${
-                      project.assignment_rule === opt.rule
-                        ? 'border-purple-800 bg-purple-50/50 text-purple-950 font-semibold shadow-xs'
-                        : 'border-stone-200 bg-stone-50/50 text-stone-700 hover:border-stone-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="assignmentRule"
-                        checked={project.assignment_rule === opt.rule}
-                        onChange={() => {}}
-                        className="text-purple-900 focus:ring-purple-800"
-                      />
-                      <span className="font-bold text-stone-900">{opt.title}</span>
-                    </div>
-                    <p className="text-[11px] text-stone-500 mt-1 pl-5">{opt.desc}</p>
-                  </label>
-                ))}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                  {[
+                    {
+                      rule: 'LEADER_ONLY',
+                      title: 'Team Leader Only (Default)',
+                      desc: 'Only the project Team Leader can create and assign tasks to members.',
+                    },
+                    {
+                      rule: 'SELECTED_MEMBERS',
+                      title: 'Selected Members',
+                      desc: 'Team Leader + members with explicit "Can Assign Tasks" permission.',
+                    },
+                    {
+                      rule: 'EVERYONE',
+                      title: 'Everyone in Project',
+                      desc: 'All project members can create and assign tasks freely.',
+                    },
+                  ].map(opt => (
+                    <label
+                      key={opt.rule}
+                      onClick={() => updateProjectAssignmentRule(project.id, opt.rule as AssignmentRule)}
+                      className={`p-3.5 rounded-lg border text-xs cursor-pointer transition-all ${
+                        project.assignment_rule === opt.rule
+                          ? 'border-purple-800 bg-purple-50/50 text-purple-950 font-semibold shadow-xs'
+                          : 'border-stone-200 bg-stone-50/50 text-stone-700 hover:border-stone-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="assignmentRule"
+                          checked={project.assignment_rule === opt.rule}
+                          onChange={() => {}}
+                          className="text-purple-900 focus:ring-purple-800"
+                        />
+                        <span className="font-bold text-stone-900">{opt.title}</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-1 pl-5">{opt.desc}</p>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Member Granular Permissions Table */}
             <div className="bg-white border border-[#E8E2D5] rounded-xl overflow-hidden shadow-2xs">
@@ -507,19 +503,29 @@ export default function ProjectDetailPage() {
                     <h3 className="text-xs font-bold uppercase tracking-wider text-stone-800">
                       Granular Member Assignment Matrix
                     </h3>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${!isPro && members.length >= 2 ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-purple-100 text-purple-900'}`}>
-                      {isPro ? 'Pro: Unlimited Members' : `Free Tier: ${members.length} / 2 Members Used`}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      isThisProjectPro 
+                        ? 'bg-purple-100 text-purple-900 border border-purple-300 font-extrabold' 
+                        : canManage && members.length >= 2 
+                        ? 'bg-amber-100 text-amber-900 border border-amber-300' 
+                        : 'bg-stone-100 text-stone-600'
+                    }`}>
+                      {isThisProjectPro 
+                        ? 'Pro Project: Unlimited Members' 
+                        : canManage 
+                        ? `Free Tier: ${members.length} / 2 Members Used` 
+                        : `${members.length} Members`}
                     </span>
                   </div>
                   <p className="text-xs text-stone-500">
-                    Toggle individual permissions for receiving or assigning tasks.
+                    {canManage ? 'Toggle individual permissions for receiving or assigning tasks.' : 'Directory of active contributors and their task assignment permissions.'}
                   </p>
                 </div>
 
-                {/* Invite Member Trigger Button */}
+                {/* Invite Member Trigger Button - ONLY visible to Team Leaders / Managers */}
                 {canManage && (
                   <div>
-                    {!isPro && members.length >= 2 ? (
+                    {!isThisProjectPro && members.length >= 2 ? (
                       <button
                         type="button"
                         onClick={() => setIsPaywallOpen(true)}
@@ -542,8 +548,8 @@ export default function ProjectDetailPage() {
                 )}
               </div>
 
-              {/* Free Limit Exceeded Alert Banner */}
-              {!isPro && members.length > 2 && (
+              {/* Free Limit Exceeded Alert Banner - ONLY shown to Team Leaders when project is NOT Pro */}
+              {!isThisProjectPro && canManage && members.length > 2 && (
                 <div className="p-3.5 bg-amber-50 border-b border-amber-200 flex items-center justify-between gap-3 text-xs text-amber-950">
                   <div className="flex items-center gap-2">
                     <Lock className="w-4 h-4 text-amber-700 shrink-0" />
