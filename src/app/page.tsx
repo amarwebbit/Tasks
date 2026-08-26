@@ -1,15 +1,17 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useTrinetra } from '@/lib/store';
 import { Header } from '@/components/Header';
 import { StatusBadge } from '@/components/StatusBadge';
 import { PriorityBadge } from '@/components/PriorityBadge';
-import { ArrowUpRight } from 'lucide-react';
+import { CreateProjectModal } from '@/components/CreateProjectModal';
+import { ArrowUpRight, FolderPlus } from 'lucide-react';
 
 export default function OrganizationDashboard() {
-  const { organization, projects, tasks, users, taskActivity } = useTrinetra();
+  const { organization, projects, tasks, users, taskActivity, currentUser } = useTrinetra();
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
 
   // Metrics
   const totalProjects = projects.length;
@@ -93,9 +95,24 @@ export default function OrganizationDashboard() {
           </div>
 
           {projects.length === 0 ? (
-            <div className="p-12 text-center bg-white border border-[#E8E2D5] rounded-xl text-stone-500 text-xs">
-              <p className="font-semibold text-stone-800 text-sm">No Projects Created Yet</p>
-              <p className="mt-1">Click the &quot;+&quot; button in the sidebar or &quot;New Task&quot; to initialize your first project.</p>
+            <div className="p-12 text-center bg-white border border-[#E8E2D5] rounded-xl text-stone-500 text-xs space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-900 flex items-center justify-center mx-auto shadow-2xs">
+                <FolderPlus className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="font-bold text-stone-900 text-sm">Welcome to Your Workspace!</p>
+                <p className="mt-1 text-stone-500 max-w-sm mx-auto">
+                  You do not have any projects assigned yet. Create your own isolated project or wait for an invitation from a team leader.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCreateProjectOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#4A154B] hover:bg-[#3B0F3C] text-white rounded-lg text-xs font-semibold shadow-xs transition-all cursor-pointer"
+              >
+                <FolderPlus className="w-4 h-4" />
+                <span>Create Your First Project</span>
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -278,6 +295,11 @@ export default function OrganizationDashboard() {
           </div>
         </div>
       </div>
+
+      <CreateProjectModal
+        isOpen={isCreateProjectOpen}
+        onClose={() => setIsCreateProjectOpen(false)}
+      />
     </div>
   );
 }

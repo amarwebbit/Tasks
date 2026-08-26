@@ -7,7 +7,14 @@ import { Header } from '@/components/Header';
 import { Users, Shield, CheckCircle2, XCircle, ArrowUpRight } from 'lucide-react';
 
 export default function TeamDirectoryPage() {
-  const { users, projects, projectMembers, tasks } = useTrinetra();
+  const { users, projects, projectMembers, tasks, currentUser } = useTrinetra();
+
+  const sharedMemberUserIds = new Set([
+    currentUser?.id,
+    ...projectMembers.map(pm => pm.user_id),
+    ...projects.map(p => p.team_leader_id),
+  ]);
+  const visibleUsers = users.filter(u => sharedMemberUserIds.has(u.id));
 
   return (
     <div className="flex-1 flex flex-col">
@@ -28,7 +35,7 @@ export default function TeamDirectoryPage() {
 
         {/* Team Members List */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {users.map(u => {
+          {visibleUsers.map(u => {
             const userMemberships = projectMembers.filter(pm => pm.user_id === u.id && pm.status === 'ACTIVE');
             const userTasks = tasks.filter(t => t.assigned_to === u.id);
             const userCompleted = userTasks.filter(t => t.status === 'APPROVED').length;

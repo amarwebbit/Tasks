@@ -208,88 +208,158 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Fetch Organization
-      const { data: orgs } = await supabase.from('organizations').select('*').limit(1);
-      const currentOrg = orgs && orgs.length > 0 ? orgs[0] : null;
+      // 1. Fetch User's Accessible Organizations
+      const { data: myOrgMembers } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .eq('status', 'ACTIVE');
+
+      const myOrgIds = myOrgMembers ? myOrgMembers.map(o => o.organization_id) : [];
+
+      const { data: orgs } = await supabase
+        .from('organizations')
+        .select('*');
+
+      const userOrgs = orgs ? orgs.filter(o => o.created_by === user.id || myOrgIds.includes(o.id)) : [];
+      const currentOrg = userOrgs.length > 0 ? userOrgs[0] : null;
       setOrganization(currentOrg);
 
-      // Fetch Projects
-      const { data: projs } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
-      if (projs) {
-        const enrichedProjects: Project[] = projs.map(p => ({
-          ...p,
-          team_leader: allProfiles?.find(u => u.id === p.team_leader_id),
-        }));
-        setProjects(enrichedProjects);
+      // 2. Fetch User's Active Project Memberships
+      const { data: myProjectMemberships } = await supabase
+        .from('project_members')
+        .select('project_id')
+        .eq('user_id', user.id)
+        .eq('status', 'ACTIVE');
 
-        // Auto-heal: Ensure project leader and creator are in project_members
-        for (const p of projs) {
-          if (p.team_leader_id) {
-            await supabase.from('project_members').upsert({
-              project_id: p.id,
-              user_id: p.team_leader_id,
-              role: 'LEADER',
-              can_receive_tasks: true,
-              can_assign_tasks: true,
-              status: 'ACTIVE',
-            }, { onConflict: 'project_id,user_id' });
-          }
+      const myProjectIds = myProjectMemberships ? myProjectMemberships.map(pm => pm.project_id) : [];
+
+      // 3. Fetch Projects and filter strictly to projects the user belongs to
+      const { data: allProjs } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      const accessibleProjects = allProjs ? allProjs.filter(p => {
+        // User is direct primary leader
+        if (p.team_leader_id === user.id) return true;
+        // User is active member of this project
+        if (myProjectIds.includes(p.id)) return true;
+        // User created the organization containing this project
+        if (currentOrg && p.organization_id === currentOrg.id && currentOrg.created_by === user.id) return true;
+        return false;
+      }) : [];
+
+      const enrichedProjects: Project[] = accessibleProjects.map(p => ({
+        ...p,
+        team_leader: allProfiles?.find(u => u.id === p.team_leader_id),
+      }));
+      setProjects(enrichedProjects);
+
+      const accessibleProjectIds = accessibleProjects.map(p => p.id);
+
+      // 4. Fetch Project Members ONLY for accessible projects
+      if (accessibleProjectIds.length > 0) {
+        const { data: pMembers } = await supabase
+          .from('project_members')
+          .select('*')
+          .in('project_id', accessibleProjectIds);
+
+        if (pMembers) {
+          const enrichedMembers: ProjectMember[] = pMembers.map(pm => ({
+            ...pm,
+            profile: allProfiles?.find(u => u.id === pm.user_id),
+          }));
+          setProjectMembers(enrichedMembers);
+        } else {
+          setProjectMembers([]);
         }
+      } else {
+        setProjectMembers([]);
       }
 
-      // Fetch Project Members
-      const { data: pMembers } = await supabase.from('project_members').select('*');
-      if (pMembers) {
-        const enrichedMembers: ProjectMember[] = pMembers.map(pm => ({
-          ...pm,
-          profile: allProfiles?.find(u => u.id === pm.user_id),
-        }));
-        setProjectMembers(enrichedMembers);
+      // 5. Fetch Tasks ONLY for accessible projects
+      if (accessibleProjectIds.length > 0) {
+        const { data: taskList } = await supabase
+          .from('tasks')
+          .select('*')
+          .in('project_id', accessibleProjectIds)
+          .order('created_at', { ascending: false });
+
+        if (taskList) {
+          const enrichedTasks: Task[] = taskList.map(t => ({
+            ...t,
+            creator: allProfiles?.find(u => u.id === t.created_by),
+            assignee: allProfiles?.find(u => u.id === t.assigned_to),
+            project: accessibleProjects.find(p => p.id === t.project_id),
+          }));
+          setTasks(enrichedTasks);
+
+          const taskIds = taskList.map(t => t.id);
+          if (taskIds.length > 0) {
+            // Fetch Activity History
+            const { data: actList } = await supabase
+              .from('task_activity')
+              .select('*')
+              .in('task_id', taskIds)
+              .order('created_at', { ascending: false });
+            if (actList) {
+              setTaskActivity(actList.map(a => ({
+                ...a,
+                user: allProfiles?.find(u => u.id === a.user_id),
+              })));
+            } else {
+              setTaskActivity([]);
+            }
+
+            // Fetch Comments
+            const { data: commList } = await supabase
+              .from('task_comments')
+              .select('*')
+              .in('task_id', taskIds)
+              .order('created_at', { ascending: true });
+            if (commList) {
+              setComments(commList.map(c => ({
+                ...c,
+                user: allProfiles?.find(u => u.id === c.user_id),
+              })));
+            } else {
+              setComments([]);
+            }
+
+            // Fetch Attachments
+            const { data: attList } = await supabase
+              .from('task_attachments')
+              .select('*')
+              .in('task_id', taskIds)
+              .order('uploaded_at', { ascending: false });
+            if (attList) {
+              setAttachments(attList.map(att => ({
+                ...att,
+                user: allProfiles?.find(u => u.id === att.user_id),
+              })));
+            } else {
+              setAttachments([]);
+            }
+          } else {
+            setTaskActivity([]);
+            setComments([]);
+            setAttachments([]);
+          }
+        } else {
+          setTasks([]);
+          setTaskActivity([]);
+          setComments([]);
+          setAttachments([]);
+        }
+      } else {
+        setTasks([]);
+        setTaskActivity([]);
+        setComments([]);
+        setAttachments([]);
       }
 
-      // Fetch Tasks
-      const { data: taskList } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
-      if (taskList) {
-        const enrichedTasks: Task[] = taskList.map(t => ({
-          ...t,
-          creator: allProfiles?.find(u => u.id === t.created_by),
-          assignee: allProfiles?.find(u => u.id === t.assigned_to),
-          project: projs?.find(p => p.id === t.project_id),
-        }));
-        setTasks(enrichedTasks);
-      }
-
-      // Fetch Activity History
-      const { data: actList } = await supabase.from('task_activity').select('*').order('created_at', { ascending: false });
-      if (actList) {
-        const enrichedAct: TaskActivity[] = actList.map(a => ({
-          ...a,
-          user: allProfiles?.find(u => u.id === a.user_id),
-        }));
-        setTaskActivity(enrichedAct);
-      }
-
-      // Fetch Comments
-      const { data: commList } = await supabase.from('task_comments').select('*').order('created_at', { ascending: true });
-      if (commList) {
-        const enrichedComm: TaskComment[] = commList.map(c => ({
-          ...c,
-          user: allProfiles?.find(u => u.id === c.user_id),
-        }));
-        setComments(enrichedComm);
-      }
-
-      // Fetch Attachments
-      const { data: attList } = await supabase.from('task_attachments').select('*').order('uploaded_at', { ascending: false });
-      if (attList) {
-        const enrichedAtt: TaskAttachment[] = attList.map(att => ({
-          ...att,
-          user: allProfiles?.find(u => u.id === att.user_id),
-        }));
-        setAttachments(enrichedAtt);
-      }
-
-      // Fetch Notifications
+      // 6. Fetch Notifications for current user
       const { data: notifList } = await supabase
         .from('notifications')
         .select('*')
@@ -297,14 +367,23 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
         .order('created_at', { ascending: false });
       if (notifList) setNotifications(notifList);
 
-      // Fetch Invitations
-      const { data: invList } = await supabase.from('invitations').select('*').order('created_at', { ascending: false });
-      if (invList) {
-        const enrichedInv: Invitation[] = invList.map(inv => ({
-          ...inv,
-          project: projs?.find(p => p.id === inv.project_id),
-        }));
-        setInvitations(enrichedInv);
+      // 7. Fetch Invitations for accessible projects
+      if (accessibleProjectIds.length > 0) {
+        const { data: invList } = await supabase
+          .from('invitations')
+          .select('*')
+          .in('project_id', accessibleProjectIds)
+          .order('created_at', { ascending: false });
+        if (invList) {
+          setInvitations(invList.map(inv => ({
+            ...inv,
+            project: accessibleProjects.find(p => p.id === inv.project_id),
+          })));
+        } else {
+          setInvitations([]);
+        }
+      } else {
+        setInvitations([]);
       }
     } catch (err) {
       console.error('Error fetching live Supabase data:', err);
