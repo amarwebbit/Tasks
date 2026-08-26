@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTrinetra } from '@/lib/store';
 import { Header } from '@/components/Header';
@@ -26,14 +26,19 @@ import {
   AlertTriangle,
   Download,
   Filter,
+  Trash2,
+  UserMinus,
+  XCircle,
 } from 'lucide-react';
 import { AssignmentRule, ProjectRole } from '@/types/database';
 
 export default function ProjectDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const projectKey = (params.projectKey as string)?.toUpperCase();
 
   const {
+    organization,
     projects,
     tasks,
     taskActivity,
@@ -41,6 +46,10 @@ export default function ProjectDetailPage() {
     getProjectMembers,
     updateMemberPermissions,
     updateProjectAssignmentRule,
+    deleteProject,
+    removeProjectMember,
+    cancelInvitation,
+    deleteTask,
     currentUser,
     canAssignInProject,
   } = useTrinetra();
@@ -51,6 +60,7 @@ export default function ProjectDetailPage() {
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isDeletingProject, setIsDeletingProject] = useState(false);
 
   const project = projects.find(p => p.project_key === projectKey);
 
@@ -73,6 +83,10 @@ export default function ProjectDetailPage() {
     const task = tasks.find(t => t.id === a.task_id);
     return task?.project_id === project.id;
   });
+
+  const isTeamLeader = project.team_leader_id === currentUser?.id;
+  const isOrgOwner = organization?.created_by === currentUser?.id;
+  const canManage = isTeamLeader || isOrgOwner;
 
   // Filtered tasks for the Tasks list tab
   const filteredTasks = projectTasks.filter(t => {
@@ -497,11 +511,13 @@ export default function ProjectDetailPage() {
                     <th className="py-3 px-4 text-center">Can Receive Tasks?</th>
                     <th className="py-3 px-4 text-center">Can Assign Tasks?</th>
                     <th className="py-3 px-4">Joined Date</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100">
                   {members.map(m => {
                     const isLeader = m.role === 'LEADER';
+                    const isPrimaryLeader = m.user_id === project.team_leader_id;
                     return (
                       <tr key={m.id} className="hover:bg-[#FBF9F5] transition-colors">
                         <td className="py-3.5 px-4 font-semibold text-stone-900">
@@ -519,7 +535,7 @@ export default function ProjectDetailPage() {
                           <select
                             value={m.role}
                             onChange={e => updateMemberPermissions(m.id, { role: e.target.value as ProjectRole })}
-                            disabled={isLeader}
+                            disabled={!canManage || isPrimaryLeader}
                             className="px-2 py-1 bg-white border border-stone-300 rounded text-xs text-stone-800 disabled:bg-stone-100"
                           >
                             <option value="LEADER">Team Leader</option>
@@ -531,8 +547,11 @@ export default function ProjectDetailPage() {
                         <td className="py-3.5 px-4 text-center">
                           <button
                             type="button"
+                            disabled={!canManage}
                             onClick={() => updateMemberPermissions(m.id, { can_receive_tasks: !m.can_receive_tasks })}
-                            className={`px-3 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                            className={`px-3 py-1 rounded text-xs font-bold transition-all disabled:opacity-60 ${
+                              canManage ? 'cursor-pointer' : 'cursor-default'
+                            } ${
                               m.can_receive_tasks
                                 ? 'bg-emerald-100 text-emerald-900 border border-emerald-300 hover:bg-emerald-200'
                                 : 'bg-stone-100 text-stone-500 border border-stone-300 hover:bg-stone-200'
@@ -545,8 +564,11 @@ export default function ProjectDetailPage() {
                         <td className="py-3.5 px-4 text-center">
                           <button
                             type="button"
+                            disabled={!canManage || isLeader}
                             onClick={() => updateMemberPermissions(m.id, { can_assign_tasks: !m.can_assign_tasks })}
-                            className={`px-3 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                            className={`px-3 py-1 rounded text-xs font-bold transition-all disabled:opacity-60 ${
+                              canManage && !isLeader ? 'cursor-pointer' : 'cursor-default'
+                            } ${
                               m.can_assign_tasks || isLeader
                                 ? 'bg-purple-100 text-purple-950 border border-purple-300 hover:bg-purple-200'
                                 : 'bg-stone-100 text-stone-500 border border-stone-300 hover:bg-stone-200'
@@ -557,6 +579,29 @@ export default function ProjectDetailPage() {
                         </td>
                         <td className="py-3.5 px-4 text-stone-500 text-[11px]">
                           {new Date(m.joined_at).toLocaleDateString()}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          {isPrimaryLeader ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-stone-100 text-stone-600 border border-stone-200">
+                              Primary Leader
+                            </span>
+                          ) : canManage ? (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (window.confirm(`Are you sure you want to remove ${m.profile?.full_name || 'this member'} from the project?`)) {
+                                  const res = await removeProjectMember(m.id);
+                                  if (!res.success) alert(res.error || 'Failed to remove member');
+                                }
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer"
+                            >
+                              <UserMinus className="w-3.5 h-3.5" />
+                              <span>Remove</span>
+                            </button>
+                          ) : (
+                            <span className="text-stone-400 text-xs">—</span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -588,6 +633,7 @@ export default function ProjectDetailPage() {
                       <th className="py-3 px-4 text-center">Can Assign?</th>
                       <th className="py-3 px-4">Status</th>
                       <th className="py-3 px-4">Invited On</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
@@ -618,6 +664,23 @@ export default function ProjectDetailPage() {
                         </td>
                         <td className="py-3 px-4 text-stone-500 text-[11px]">
                           {new Date(inv.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {canManage && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (window.confirm(`Cancel invitation for ${inv.email}?`)) {
+                                  const res = await cancelInvitation(inv.id);
+                                  if (!res.success) alert(res.error || 'Failed to cancel invitation');
+                                }
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              <span>Cancel</span>
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -726,6 +789,44 @@ export default function ProjectDetailPage() {
                 />
               </div>
             </div>
+
+            {/* Danger Zone: Delete Project (Team Leader / Org Owner only) */}
+            {canManage && (
+              <div className="pt-4 border-t border-stone-200">
+                <div className="p-5 rounded-xl border border-rose-200 bg-rose-50/60 space-y-3">
+                  <div className="flex items-center gap-2 text-rose-900 font-bold text-sm">
+                    <AlertTriangle className="w-4 h-4 text-rose-600" />
+                    <span>Danger Zone: Delete Project</span>
+                  </div>
+                  <p className="text-xs text-rose-800 leading-relaxed">
+                    Permanently delete <strong>{project.name}</strong> ({project.project_key}), including all associated tasks, attachments, discussion comments, and audit activity. This action is irreversible.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={isDeletingProject}
+                    onClick={async () => {
+                      const confirmText = window.prompt(`To permanently delete this project, please type its key "${project.project_key}":`);
+                      if (confirmText === project.project_key) {
+                        setIsDeletingProject(true);
+                        const res = await deleteProject(project.id);
+                        if (res.success) {
+                          router.push('/');
+                        } else {
+                          alert(res.error || 'Failed to delete project.');
+                          setIsDeletingProject(false);
+                        }
+                      } else if (confirmText !== null) {
+                        alert('Project key did not match. Deletion cancelled.');
+                      }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>{isDeletingProject ? 'Deleting Project...' : 'Delete Entire Project'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

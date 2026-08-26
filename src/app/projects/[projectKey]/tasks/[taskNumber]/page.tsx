@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTrinetra } from '@/lib/store';
 import { Header } from '@/components/Header';
@@ -24,11 +24,13 @@ import {
   User,
   ShieldCheck,
   AlertTriangle,
+  Trash2,
 } from 'lucide-react';
 import { TaskComment } from '@/types/database';
 
 export default function TaskDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const projectKey = (params.projectKey as string)?.toUpperCase();
   const taskNumber = parseInt(params.taskNumber as string, 10);
 
@@ -47,6 +49,7 @@ export default function TaskDetailPage() {
     submitTask,
     requestChanges,
     approveTask,
+    deleteTask,
     addComment,
     addAttachment,
   } = useTrinetra();
@@ -62,6 +65,7 @@ export default function TaskDetailPage() {
   const [isChangesModalOpen, setIsChangesModalOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
 
   const project = projects.find(p => p.project_key === projectKey);
   const task = tasks.find(
@@ -121,7 +125,7 @@ export default function TaskDetailPage() {
       />
 
       <div className="p-8 max-w-7xl w-full mx-auto space-y-6">
-        {/* Breadcrumb back */}
+        {/* Breadcrumb back & Actions */}
         <div className="flex items-center justify-between">
           <Link
             href={`/projects/${projectKey}`}
@@ -130,9 +134,33 @@ export default function TaskDetailPage() {
             <ArrowLeft className="w-4 h-4" />
             <span>Back to {project.name}</span>
           </Link>
-          <span className="text-xs text-stone-400 font-mono">
-            ID: {task.id}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-stone-400 font-mono">
+              ID: {task.id}
+            </span>
+            {isReviewer && (
+              <button
+                type="button"
+                disabled={isDeletingTask}
+                onClick={async () => {
+                  if (window.confirm(`Are you sure you want to permanently delete task ${projectKey}-${task.task_number} ("${task.title}")?`)) {
+                    setIsDeletingTask(true);
+                    const res = await deleteTask(task.id);
+                    if (res.success) {
+                      router.push(`/projects/${projectKey}`);
+                    } else {
+                      alert(res.error || 'Failed to delete task.');
+                      setIsDeletingTask(false);
+                    }
+                  }
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeletingTask ? 'Deleting...' : 'Delete Task'}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {actionError && (

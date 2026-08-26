@@ -65,6 +65,8 @@ interface TrinetraContextType {
     memberId: string,
     permissions: { can_assign_tasks?: boolean; can_receive_tasks?: boolean; role?: ProjectRole }
   ) => Promise<void>;
+  deleteProject: (projectId: string) => Promise<{ success: boolean; error?: string }>;
+  removeProjectMember: (memberId: string) => Promise<{ success: boolean; error?: string }>;
 
   // Invitations
   inviteMember: (params: {
@@ -76,6 +78,7 @@ interface TrinetraContextType {
   }) => Promise<{ success: boolean; error?: string }>;
 
   acceptInvitation: (token: string) => Promise<{ success: boolean; error?: string }>;
+  cancelInvitation: (invitationId: string) => Promise<{ success: boolean; error?: string }>;
 
   // Task Engine & Status Lifecycle
   createTask: (params: {
@@ -87,6 +90,8 @@ interface TrinetraContextType {
     priority: TaskPriority;
     due_date?: string;
   }) => Promise<{ success: boolean; task?: Task; error?: string }>;
+
+  deleteTask: (taskId: string) => Promise<{ success: boolean; error?: string }>;
 
   acknowledgeTask: (taskId: string) => Promise<{ success: boolean; error?: string }>;
   startTask: (taskId: string) => Promise<{ success: boolean; error?: string }>;
@@ -550,6 +555,57 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
     await refreshData();
   };
 
+  // Delete Project (Team Leader or Org Owner only)
+  const deleteProject = async (projectId: string) => {
+    if (!supabase || !currentUser) return { success: false, error: 'Not authenticated' };
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return { success: false, error: 'Project not found' };
+
+    const isLeader = project.team_leader_id === currentUser.id;
+    const isOwner = organization?.created_by === currentUser.id;
+    if (!isLeader && !isOwner) {
+      return { success: false, error: 'Permission denied: Only the Team Leader or Organization Owner can delete this project.' };
+    }
+
+    const { error } = await supabase.from('projects').delete().eq('id', projectId);
+    if (error) {
+      console.error('Error deleting project:', error);
+      return { success: false, error: error.message };
+    }
+
+    await refreshData();
+    return { success: true };
+  };
+
+  // Remove Project Member (Team Leader or Org Owner only; Cannot remove primary leader)
+  const removeProjectMember = async (memberId: string) => {
+    if (!supabase || !currentUser) return { success: false, error: 'Not authenticated' };
+    const member = projectMembers.find(m => m.id === memberId);
+    if (!member) return { success: false, error: 'Member not found' };
+
+    const project = projects.find(p => p.id === member.project_id);
+    if (!project) return { success: false, error: 'Project not found' };
+
+    const isLeader = project.team_leader_id === currentUser.id;
+    const isOwner = organization?.created_by === currentUser.id;
+    if (!isLeader && !isOwner) {
+      return { success: false, error: 'Permission denied: Only the Team Leader or Organization Owner can remove project members.' };
+    }
+
+    if (member.user_id === project.team_leader_id) {
+      return { success: false, error: 'Cannot remove the primary Team Leader from the project.' };
+    }
+
+    const { error } = await supabase.from('project_members').delete().eq('id', memberId);
+    if (error) {
+      console.error('Error removing member:', error);
+      return { success: false, error: error.message };
+    }
+
+    await refreshData();
+    return { success: true };
+  };
+
   // 8. Invite Member with Direct Adding for existing accounts
   const inviteMember = async ({
     projectId,
@@ -641,6 +697,29 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
       status: 'ACCEPTED',
       accepted_at: new Date().toISOString(),
     }).eq('id', invite.id);
+
+    await refreshData();
+    return { success: true };
+  };
+
+  // Cancel Invitation (Team Leader or Org Owner only)
+  const cancelInvitation = async (invitationId: string) => {
+    if (!supabase || !currentUser) return { success: false, error: 'Not authenticated' };
+    const inv = invitations.find(i => i.id === invitationId);
+    if (!inv) return { success: false, error: 'Invitation not found' };
+
+    const project = projects.find(p => p.id === inv.project_id);
+    const isLeader = project?.team_leader_id === currentUser.id;
+    const isOwner = organization?.created_by === currentUser.id;
+    if (!isLeader && !isOwner) {
+      return { success: false, error: 'Permission denied: Only the Team Leader or Organization Owner can cancel invitations.' };
+    }
+
+    const { error } = await supabase.from('invitations').delete().eq('id', invitationId);
+    if (error) {
+      console.error('Error cancelling invitation:', error);
+      return { success: false, error: error.message };
+    }
 
     await refreshData();
     return { success: true };
@@ -743,6 +822,31 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
 
     await refreshData();
     return { success: true, task: newTask };
+  };
+
+  // Delete Task (Task Creator, Team Leader, or Org Owner only)
+  const deleteTask = async (taskId: string) => {
+    if (!supabase || !currentUser) return { success: false, error: 'Not authenticated' };
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found' };
+
+    const project = projects.find(p => p.id === task.project_id);
+    const isCreator = task.created_by === currentUser.id;
+    const isLeader = project?.team_leader_id === currentUser.id;
+    const isOwner = organization?.created_by === currentUser.id;
+
+    if (!isCreator && !isLeader && !isOwner) {
+      return { success: false, error: 'Permission denied: Only the Task Creator, Team Leader, or Organization Owner can delete this task.' };
+    }
+
+    const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+    if (error) {
+      console.error('Error deleting task:', error);
+      return { success: false, error: error.message };
+    }
+
+    await refreshData();
+    return { success: true };
   };
 
   // 11. Lifecycle Transitions
@@ -1091,12 +1195,16 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
 
         createOrganization,
         createProject,
+        deleteProject,
         updateProjectAssignmentRule,
         updateMemberPermissions,
+        removeProjectMember,
         inviteMember,
         acceptInvitation,
+        cancelInvitation,
 
         createTask,
+        deleteTask,
         acknowledgeTask,
         startTask,
         blockTask,
