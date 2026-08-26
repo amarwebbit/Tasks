@@ -51,9 +51,6 @@ export const Sidebar: React.FC = () => {
     { label: 'Reports & Export', href: '/reports', icon: FileSpreadsheet },
     { label: 'Team Directory', href: '/team', icon: Users },
     { label: 'Notifications', href: '/notifications', icon: Bell, badge: unreadNotifications },
-    ...(currentUser?.role === 'ADMIN'
-      ? [{ label: 'Admin Command', href: '/admin', icon: ShieldAlert }]
-      : []),
   ];
 
   return (

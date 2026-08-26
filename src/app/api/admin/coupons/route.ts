@@ -4,8 +4,13 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const adminKey = req.headers.get('x-admin-key');
+    if (adminKey !== 'TRINETRA_ADMIN_2026') {
+      return NextResponse.json({ error: 'Unauthorized admin access' }, { status: 401 });
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { data: coupons, error } = await supabase
@@ -23,6 +28,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const adminKey = req.headers.get('x-admin-key');
+    if (adminKey !== 'TRINETRA_ADMIN_2026') {
+      return NextResponse.json({ error: 'Unauthorized admin access' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { code, discount_type, discount_value, max_uses, expires_at } = body;
 
@@ -56,6 +66,11 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    const adminKey = req.headers.get('x-admin-key');
+    if (adminKey !== 'TRINETRA_ADMIN_2026') {
+      return NextResponse.json({ error: 'Unauthorized admin access' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 

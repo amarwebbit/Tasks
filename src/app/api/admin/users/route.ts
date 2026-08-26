@@ -4,8 +4,13 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const adminKey = req.headers.get('x-admin-key');
+    if (adminKey !== 'TRINETRA_ADMIN_2026') {
+      return NextResponse.json({ error: 'Unauthorized admin access' }, { status: 401 });
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Fetch all profiles
@@ -55,6 +60,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const adminKey = req.headers.get('x-admin-key');
+    if (adminKey !== 'TRINETRA_ADMIN_2026') {
+      return NextResponse.json({ error: 'Unauthorized admin access' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { userId, plan, durationDays } = body;
 
