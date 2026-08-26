@@ -33,6 +33,7 @@ export default function TaskDetailPage() {
   const taskNumber = parseInt(params.taskNumber as string, 10);
 
   const {
+    organization,
     projects,
     tasks,
     taskActivity,
@@ -83,6 +84,12 @@ export default function TaskDetailPage() {
       </div>
     );
   }
+
+  const isAssignee = currentUser?.id === task.assigned_to;
+  const isCreator = currentUser?.id === task.created_by;
+  const isTeamLeader = project.team_leader_id === currentUser?.id;
+  const isOrgOwner = organization?.created_by === currentUser?.id;
+  const isReviewer = isCreator || isTeamLeader || isOrgOwner;
 
   const taskActivities = taskActivity.filter(a => a.task_id === task.id);
   const taskComments = comments.filter(c => c.task_id === task.id);
@@ -141,130 +148,177 @@ export default function TaskDetailPage() {
         <div className="bg-white border-2 border-purple-200/80 rounded-xl p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-purple-900">Task Lifecycle Control</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-purple-900">Task Lifecycle Control</span>
+                {isAssignee && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-200">
+                    Your Assigned Task
+                  </span>
+                )}
+                {!isAssignee && isReviewer && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-200">
+                    Reviewer / Leader View
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-3 mt-1">
                 <StatusBadge status={task.status} />
                 <span className="text-xs text-stone-600">
-                  {task.status === 'ASSIGNED' && 'Awaiting acknowledgement from assignee.'}
-                  {task.status === 'ACKNOWLEDGED' && 'Acknowledged. Ready to begin work.'}
-                  {task.status === 'IN_PROGRESS' && 'Work is actively under development.'}
-                  {task.status === 'BLOCKED' && 'Task is blocked and requires unblocking.'}
-                  {task.status === 'SUBMITTED' && 'Submitted. Awaiting Team Leader review & approval.'}
-                  {task.status === 'CHANGES_REQUESTED' && 'Revisions requested by reviewer.'}
+                  {task.status === 'ASSIGNED' && (isAssignee ? 'You have been assigned this task. Please acknowledge.' : `Awaiting acknowledgement from ${task.assignee?.full_name || 'assignee'}.`)}
+                  {task.status === 'ACKNOWLEDGED' && (isAssignee ? 'You acknowledged this task. Click "Start Working" when ready.' : `${task.assignee?.full_name || 'Assignee'} acknowledged. Ready to begin work.`)}
+                  {task.status === 'IN_PROGRESS' && (isAssignee ? 'Work is actively under development by you.' : `${task.assignee?.full_name || 'Assignee'} is actively working on development.`)}
+                  {task.status === 'BLOCKED' && (isAssignee ? 'You reported a blocker. Resolve to resume.' : `Task is blocked: "${task.blocked_reason || 'Requires assistance'}"`)}
+                  {task.status === 'SUBMITTED' && (isAssignee ? 'Work submitted. Awaiting Team Leader review & approval.' : `${task.assignee?.full_name || 'Assignee'} submitted deliverables for your review.`)}
+                  {task.status === 'CHANGES_REQUESTED' && (isAssignee ? `Revisions requested: "${task.changes_requested_reason || 'Please review comments'}"` : `You requested changes from ${task.assignee?.full_name || 'assignee'}.`)}
                   {task.status === 'APPROVED' && 'Approved and officially closed in history.'}
                 </span>
               </div>
             </div>
 
-            {/* Action Buttons Depending on State Machine */}
+            {/* Action Buttons Strictly Gated by Role */}
             <div className="flex flex-wrap items-center gap-2">
-              {/* ASSIGNED -> ACKNOWLEDGE */}
-              {task.status === 'ASSIGNED' && (
-                <button
-                  disabled={isActionLoading}
-                  onClick={async () => {
-                    setIsActionLoading(true);
-                    const res = await acknowledgeTask(task.id);
-                    if (!res.success) setActionError(res.error || 'Action failed');
-                    setIsActionLoading(false);
-                  }}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Acknowledge Assignment</span>
-                </button>
-              )}
-
-              {/* ACKNOWLEDGED / CHANGES_REQUESTED -> START IN_PROGRESS */}
-              {(task.status === 'ACKNOWLEDGED' || task.status === 'CHANGES_REQUESTED') && (
-                <button
-                  disabled={isActionLoading}
-                  onClick={async () => {
-                    setIsActionLoading(true);
-                    const res = await startTask(task.id);
-                    if (!res.success) setActionError(res.error || 'Action failed');
-                    setIsActionLoading(false);
-                  }}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
-                >
-                  <Play className="w-4 h-4" />
-                  <span>Start Working</span>
-                </button>
-              )}
-
-              {/* IN_PROGRESS -> BLOCKED or SUBMITTED */}
-              {task.status === 'IN_PROGRESS' && (
+              {/* 1. ASSIGNEE ACTIONS */}
+              {isAssignee && (
                 <>
-                  <button
-                    disabled={isActionLoading}
-                    onClick={() => setIsBlockModalOpen(true)}
-                    className="flex items-center gap-1.5 px-3.5 py-2 bg-orange-100 hover:bg-orange-200 text-orange-900 text-xs font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    <AlertOctagon className="w-4 h-4 text-orange-700" />
-                    <span>Report Blocker</span>
-                  </button>
+                  {/* ASSIGNED -> ACKNOWLEDGE */}
+                  {task.status === 'ASSIGNED' && (
+                    <button
+                      disabled={isActionLoading}
+                      onClick={async () => {
+                        setIsActionLoading(true);
+                        const res = await acknowledgeTask(task.id);
+                        if (!res.success) setActionError(res.error || 'Action failed');
+                        setIsActionLoading(false);
+                      }}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Acknowledge Assignment</span>
+                    </button>
+                  )}
 
-                  <button
-                    disabled={isActionLoading}
-                    onClick={() => setIsSubmitModalOpen(true)}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-[#4A154B] hover:bg-[#3B0F3C] text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
-                  >
-                    <CornerUpRight className="w-4 h-4" />
-                    <span>Submit for Review</span>
-                  </button>
+                  {/* ACKNOWLEDGED / CHANGES_REQUESTED -> START WORKING */}
+                  {(task.status === 'ACKNOWLEDGED' || task.status === 'CHANGES_REQUESTED') && (
+                    <button
+                      disabled={isActionLoading}
+                      onClick={async () => {
+                        setIsActionLoading(true);
+                        const res = await startTask(task.id);
+                        if (!res.success) setActionError(res.error || 'Action failed');
+                        setIsActionLoading(false);
+                      }}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
+                    >
+                      <Play className="w-4 h-4" />
+                      <span>Start Working</span>
+                    </button>
+                  )}
+
+                  {/* IN_PROGRESS -> REPORT BLOCKER or SUBMIT FOR REVIEW */}
+                  {task.status === 'IN_PROGRESS' && (
+                    <>
+                      <button
+                        disabled={isActionLoading}
+                        onClick={() => setIsBlockModalOpen(true)}
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-orange-100 hover:bg-orange-200 text-orange-900 text-xs font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        <AlertOctagon className="w-4 h-4 text-orange-700" />
+                        <span>Report Blocker</span>
+                      </button>
+
+                      <button
+                        disabled={isActionLoading}
+                        onClick={() => setIsSubmitModalOpen(true)}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-[#4A154B] hover:bg-[#3B0F3C] text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
+                      >
+                        <CornerUpRight className="w-4 h-4" />
+                        <span>Submit for Review</span>
+                      </button>
+                    </>
+                  )}
+
+                  {/* BLOCKED -> UNBLOCK / RESUME */}
+                  {task.status === 'BLOCKED' && (
+                    <button
+                      disabled={isActionLoading}
+                      onClick={async () => {
+                        setIsActionLoading(true);
+                        const res = await unblockTask(task.id);
+                        if (!res.success) setActionError(res.error || 'Action failed');
+                        setIsActionLoading(false);
+                      }}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
+                    >
+                      <Play className="w-4 h-4" />
+                      <span>Clear Blocker & Resume</span>
+                    </button>
+                  )}
+
+                  {/* SUBMITTED -> WAITING BADGE */}
+                  {task.status === 'SUBMITTED' && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-900 text-xs font-medium rounded-lg border border-amber-200">
+                      <Clock className="w-4 h-4 text-amber-600" />
+                      <span>Awaiting Team Leader Review</span>
+                    </div>
+                  )}
                 </>
               )}
 
-              {/* BLOCKED -> UNBLOCK */}
-              {task.status === 'BLOCKED' && (
-                <button
-                  disabled={isActionLoading}
-                  onClick={async () => {
-                    setIsActionLoading(true);
-                    const res = await unblockTask(task.id);
-                    if (!res.success) setActionError(res.error || 'Action failed');
-                    setIsActionLoading(false);
-                  }}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
-                >
-                  <Play className="w-4 h-4" />
-                  <span>Clear Blocker & Resume</span>
-                </button>
-              )}
-
-              {/* SUBMITTED -> APPROVE or REQUEST CHANGES */}
-              {task.status === 'SUBMITTED' && (
+              {/* 2. REVIEWER / LEADER ACTIONS (When not acting as assignee) */}
+              {!isAssignee && isReviewer && (
                 <>
-                  <button
-                    disabled={isActionLoading}
-                    onClick={() => setIsChangesModalOpen(true)}
-                    className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-100 hover:bg-rose-200 text-rose-900 text-xs font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    <RotateCcw className="w-4 h-4 text-rose-700" />
-                    <span>Request Changes</span>
-                  </button>
+                  {/* SUBMITTED -> REVIEWER CAN APPROVE OR REQUEST CHANGES */}
+                  {task.status === 'SUBMITTED' && (
+                    <>
+                      <button
+                        disabled={isActionLoading}
+                        onClick={() => setIsChangesModalOpen(true)}
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-100 hover:bg-rose-200 text-rose-900 text-xs font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        <RotateCcw className="w-4 h-4 text-rose-700" />
+                        <span>Request Changes</span>
+                      </button>
 
-                  <button
-                    disabled={isActionLoading}
-                    onClick={async () => {
-                      setIsActionLoading(true);
-                      const res = await approveTask(task.id);
-                      if (!res.success) setActionError(res.error || 'Action failed');
-                      setIsActionLoading(false);
-                    }}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
-                  >
-                    <CheckCheck className="w-4 h-4" />
-                    <span>✓ Approve & Complete</span>
-                  </button>
+                      <button
+                        disabled={isActionLoading}
+                        onClick={async () => {
+                          setIsActionLoading(true);
+                          const res = await approveTask(task.id);
+                          if (!res.success) setActionError(res.error || 'Action failed');
+                          setIsActionLoading(false);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
+                      >
+                        <CheckCheck className="w-4 h-4" />
+                        <span>✓ Approve & Complete</span>
+                      </button>
+                    </>
+                  )}
+
+                  {/* BLOCKED -> REVIEWER CAN ASSIST / UNBLOCK */}
+                  {task.status === 'BLOCKED' && (
+                    <button
+                      disabled={isActionLoading}
+                      onClick={async () => {
+                        setIsActionLoading(true);
+                        const res = await unblockTask(task.id);
+                        if (!res.success) setActionError(res.error || 'Action failed');
+                        setIsActionLoading(false);
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-100 hover:bg-blue-200 text-blue-900 text-xs font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      <Play className="w-4 h-4 text-blue-700" />
+                      <span>Unblock on Behalf of Assignee</span>
+                    </button>
+                  )}
                 </>
               )}
 
-              {/* COMPLETED */}
+              {/* COMPLETED BADGE FOR EVERYONE */}
               {task.status === 'APPROVED' && (
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-900 text-xs font-bold rounded-lg border border-emerald-300">
                   <CheckCheck className="w-4 h-4 text-emerald-700" />
-                  <span>Completed & Closed</span>
+                  <span>Approved & Closed</span>
                 </div>
               )}
             </div>

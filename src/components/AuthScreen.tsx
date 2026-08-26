@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTrinetra } from '@/lib/store';
-import { Shield, KeyRound, User, Mail, ArrowRight, AlertCircle, Database, CheckCircle2, Info } from 'lucide-react';
+import { KeyRound, User, Mail, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export const AuthScreen: React.FC = () => {
   const { isConfigured, signIn, signUp } = useTrinetra();
@@ -63,26 +63,6 @@ export const AuthScreen: React.FC = () => {
           </p>
         </div>
 
-        {/* Database Configuration Notice if not set yet */}
-        {!isConfigured && (
-          <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-xl text-xs space-y-2">
-            <div className="flex items-center gap-2 font-bold text-amber-900">
-              <Database className="w-4 h-4 text-amber-700" />
-              <span>Connect Your Supabase Cloud Project</span>
-            </div>
-            <p className="text-amber-800 leading-relaxed">
-              Add your real Supabase Cloud credentials in <code>.env.local</code>:
-            </p>
-            <pre className="p-2.5 bg-white/80 rounded border border-amber-200 text-[11px] font-mono text-stone-800 overflow-x-auto">
-              NEXT_PUBLIC_SUPABASE_URL=https://xyz.supabase.co{'\n'}
-              NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
-            </pre>
-            <p className="text-[11px] text-amber-700">
-              Also run <code>supabase/migrations/20260826000000_schema.sql</code> in your Supabase Cloud SQL Editor.
-            </p>
-          </div>
-        )}
-
         {/* Account Created Notification */}
         {createdAccount && (
           <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-950 space-y-2">
@@ -91,7 +71,7 @@ export const AuthScreen: React.FC = () => {
               <span>Account Registered for {createdAccount}!</span>
             </div>
             <p className="leading-relaxed">
-              If your Supabase project requires email confirmation, confirm your email or disable &quot;Confirm email&quot; in Supabase. Otherwise, enter your password below to Sign In.
+              Your account has been created. Please sign in below.
             </p>
           </div>
         )}
@@ -116,19 +96,9 @@ export const AuthScreen: React.FC = () => {
           </div>
 
           {error && (
-            <div className="p-3.5 bg-red-50 border border-red-200 rounded-lg text-red-800 text-xs space-y-1">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                <span className="font-semibold">{error}</span>
-              </div>
-              {error.toLowerCase().includes('email not confirmed') && (
-                <div className="pl-6 text-[11px] text-red-700 space-y-1 pt-1">
-                  <p>To enable instant login without waiting for emails:</p>
-                  <p>1. Open <strong>Supabase Dashboard</strong> → <strong>Authentication</strong> → <strong>Providers</strong> → <strong>Email</strong></p>
-                  <p>2. Toggle <strong>OFF</strong> &quot;Confirm email&quot; and click <strong>Save</strong>.</p>
-                  <p>3. Or in <strong>Authentication</strong> → <strong>Users</strong>, click <strong>&quot;...&quot;</strong> next to your email and select <strong>&quot;Confirm user&quot;</strong>.</p>
-                </div>
-              )}
+            <div className="p-3.5 bg-red-50 border border-red-200 rounded-lg text-red-800 text-xs flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+              <span className="font-semibold">{error}</span>
             </div>
           )}
 
@@ -196,22 +166,6 @@ export const AuthScreen: React.FC = () => {
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-        </div>
-
-        {/* Developer / Setup Tip Box */}
-        <div className="p-3.5 bg-stone-100/80 border border-stone-200 rounded-xl text-[11px] text-stone-600 space-y-1.5">
-          <div className="flex items-center gap-1.5 font-bold text-stone-800">
-            <Info className="w-3.5 h-3.5 text-purple-900 shrink-0" />
-            <span>Supabase Email Confirmation Tip</span>
-          </div>
-          <p>
-            By default, Supabase Cloud requires confirming your email before logging in. If you want instant logins without email confirmation:
-          </p>
-          <ol className="list-decimal pl-4 space-y-0.5 text-stone-700">
-            <li>In Supabase Dashboard $\to$ <strong>Authentication</strong> $\to$ <strong>Providers</strong> $\to$ <strong>Email</strong>.</li>
-            <li>Turn <strong>OFF</strong> &quot;Confirm email&quot; and click <strong>Save</strong>.</li>
-            <li>You can also click <strong>&quot;...&quot;</strong> $\to$ <strong>&quot;Confirm user&quot;</strong> in the Users list.</li>
-          </ol>
         </div>
       </div>
     </div>
