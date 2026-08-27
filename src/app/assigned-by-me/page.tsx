@@ -26,8 +26,8 @@ export default function AssignedByMePage() {
         subtitle={`All tasks created and delegated by ${currentUser?.full_name || 'User'}`}
       />
 
-      <div className="p-8 max-w-7xl w-full mx-auto space-y-6">
-        <div className="p-4 bg-white border border-[#E8E2D5] rounded-xl flex items-center justify-between shadow-2xs">
+      <div className="p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6">
+        <div className="p-4 bg-white border border-[#E8E2D5] rounded-xl flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between shadow-2xs">
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-stone-500">Filter by status:</span>
             <select
@@ -52,7 +52,8 @@ export default function AssignedByMePage() {
         </div>
 
         <div className="bg-white border border-[#E8E2D5] rounded-xl overflow-hidden shadow-2xs">
-          <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] text-left text-xs">
             <thead className="bg-[#F4EFE6]/60 border-b border-[#E8E2D5] text-stone-600 font-bold uppercase tracking-wider text-[10px]">
               <tr>
                 <th className="py-3 px-4">Task ID</th>
@@ -124,6 +125,7 @@ export default function AssignedByMePage() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </div>

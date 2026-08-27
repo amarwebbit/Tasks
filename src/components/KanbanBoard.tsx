@@ -65,14 +65,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, projectKey }) =
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start overflow-x-auto pb-6">
+    <div className="flex flex-col md:flex-row gap-4 items-start overflow-x-auto pb-6 w-full">
       {columns.map(col => {
         const colTasks = tasks.filter(t => col.statuses.includes(t.status));
 
         return (
           <div
             key={col.id}
-            className="bg-[#FBF9F5] border border-[#E8E2D5] rounded-xl flex flex-col min-w-[260px] shadow-2xs"
+            className="bg-[#FBF9F5] border border-[#E8E2D5] rounded-xl flex flex-col w-full md:min-w-[260px] md:max-w-[280px] shrink-0 shadow-2xs"
           >
             {/* Column Header */}
             <div

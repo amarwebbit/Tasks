@@ -7,6 +7,7 @@ import { AuthScreen } from './AuthScreen';
 import { Loader2 } from 'lucide-react';
 
 import { usePathname } from 'next/navigation';
+import { UiProvider } from '@/lib/ui-context';
 
 const InnerShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const pathname = usePathname();
@@ -66,7 +67,9 @@ const InnerShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <TrinetraProvider>
-      <InnerShell>{children}</InnerShell>
+      <UiProvider>
+        <InnerShell>{children}</InnerShell>
+      </UiProvider>
     </TrinetraProvider>
   );
 };

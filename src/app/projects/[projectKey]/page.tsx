@@ -158,8 +158,8 @@ export default function ProjectDetailPage() {
       />
 
       {/* Project Navigation Bar */}
-      <div className="px-8 border-b border-[#E8E2D5] bg-white sticky top-16 z-20">
-        <div className="flex items-center justify-between">
+      <div className="px-4 sm:px-8 border-b border-[#E8E2D5] bg-white sticky top-16 z-20 overflow-x-auto scrollbar-none">
+        <div className="flex items-center justify-between min-w-max">
           <nav className="flex space-x-1">
             {[
               { id: 'tasks', label: 'Tasks', icon: ListTodo, count: totalTasks },
@@ -208,7 +208,7 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Main Content Area */}
-      <div className="p-8 max-w-7xl w-full mx-auto space-y-6">
+      <div className="p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6">
         {/* ----------------- TAB: TASKS (LIST VIEW) ----------------- */}
         {activeTab === 'tasks' && (
           <div className="space-y-4">
@@ -271,7 +271,8 @@ export default function ProjectDetailPage() {
 
             {/* Task Table */}
             <div className="bg-white border border-[#E8E2D5] rounded-xl overflow-hidden shadow-2xs">
-              <table className="w-full text-left text-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[700px] text-left text-xs">
                 <thead className="bg-[#F4EFE6]/60 border-b border-[#E8E2D5] text-stone-600 font-bold uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="py-3 px-4">Task ID</th>
@@ -347,6 +348,7 @@ export default function ProjectDetailPage() {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         )}
@@ -568,7 +570,8 @@ export default function ProjectDetailPage() {
                 </div>
               )}
 
-              <table className="w-full text-left text-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[800px] text-left text-xs">
                 <thead className="bg-[#F4EFE6]/60 border-b border-[#E8E2D5] text-stone-600 font-bold uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="py-3 px-4">Member</th>
@@ -674,6 +677,7 @@ export default function ProjectDetailPage() {
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
 
             {/* Pending Invitations Table if any */}
@@ -690,7 +694,8 @@ export default function ProjectDetailPage() {
                   </div>
                 </div>
 
-                <table className="w-full text-left text-xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[800px] text-left text-xs">
                   <thead className="bg-[#F4EFE6]/60 border-b border-[#E8E2D5] text-stone-600 font-bold uppercase tracking-wider text-[10px]">
                     <tr>
                       <th className="py-3 px-4">Invited Email</th>
@@ -752,6 +757,7 @@ export default function ProjectDetailPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>

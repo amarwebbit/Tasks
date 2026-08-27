@@ -86,7 +86,7 @@ export default function ReportsPage() {
         subtitle="Server-side XLSX generator with complete multi-sheet audit history"
       />
 
-      <div className="p-8 max-w-7xl w-full mx-auto space-y-6">
+      <div className="p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6">
         {exportMessage && (
           <div className="p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -283,7 +283,8 @@ export default function ReportsPage() {
             </h4>
           </div>
 
-          <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] text-left text-xs">
             <thead className="bg-[#F4EFE6]/60 border-b border-[#E8E2D5] text-stone-600 font-bold uppercase tracking-wider text-[10px]">
               <tr>
                 <th className="py-3 px-4">Task ID</th>
@@ -319,6 +320,7 @@ export default function ReportsPage() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 

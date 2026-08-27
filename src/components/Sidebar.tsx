@@ -17,9 +17,11 @@ import {
   Sparkles,
   ShieldAlert,
   Lock,
+  X,
 } from 'lucide-react';
 import { CreateProjectModal } from './CreateProjectModal';
 import { PaywallModal } from './PaywallModal';
+import { useUi } from '@/lib/ui-context';
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
@@ -32,6 +34,8 @@ export const Sidebar: React.FC = () => {
     isPro,
     signOut,
   } = useTrinetra();
+
+  const { isSidebarOpen, closeSidebar } = useUi();
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
@@ -55,16 +59,28 @@ export const Sidebar: React.FC = () => {
 
   return (
     <>
-      <aside className="w-64 bg-[#FBF9F5] border-r border-[#E8E2D5] flex flex-col h-screen sticky top-0 shrink-0 select-none">
+      {/* Backdrop overlay for mobile/tablet */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-stone-900/40 z-40 lg:hidden transition-opacity duration-300"
+          onClick={closeSidebar}
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 w-64 bg-[#FBF9F5] border-r border-[#E8E2D5] flex flex-col h-full z-50 transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:z-0 lg:translate-x-0 select-none ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         {/* Organization Brand Header */}
         <div className="p-5 border-b border-[#E8E2D5] bg-white/60 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#4A154B] flex items-center justify-center text-white font-bold text-sm shadow-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-[#4A154B] flex items-center justify-center text-white font-bold text-sm shadow-xs shrink-0">
               T
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h1 className="text-sm font-bold tracking-tight text-stone-900 leading-none truncate max-w-[120px]">
+            <div className="truncate">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h1 className="text-sm font-bold tracking-tight text-stone-900 leading-none truncate max-w-[100px]">
                   {organization?.name || (currentUser ? `${currentUser.full_name}'s Workspace` : 'Trinetra Workspace')}
                 </h1>
                 <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-[9px] tracking-wider uppercase shrink-0">
@@ -74,6 +90,14 @@ export const Sidebar: React.FC = () => {
               <span className="text-[11px] text-stone-500 font-medium">Task Accountability Engine</span>
             </div>
           </div>
+          {/* Close button visible only on mobile/tablet */}
+          <button
+            onClick={closeSidebar}
+            className="p-1 rounded-md text-stone-500 hover:text-stone-900 hover:bg-stone-100 lg:hidden cursor-pointer shrink-0"
+            title="Close Sidebar"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Real User Profile Box */}

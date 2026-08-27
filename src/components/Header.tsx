@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { useTrinetra } from '@/lib/store';
-import { Plus, ShieldCheck } from 'lucide-react';
+import { Plus, ShieldCheck, Menu } from 'lucide-react';
 import { CreateTaskModal } from './CreateTaskModal';
+import { useUi } from '@/lib/ui-context';
 
 interface HeaderProps {
   title?: string;
@@ -13,18 +14,29 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ title, subtitle, projectId }) => {
   const { currentUser } = useTrinetra();
+  const { toggleSidebar } = useUi();
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
 
   return (
     <>
-      <header className="h-16 px-8 bg-white border-b border-[#E8E2D5] flex items-center justify-between sticky top-0 z-30">
-        <div>
-          <h1 className="text-lg font-bold text-stone-900 leading-tight">
-            {title || 'Dashboard'}
-          </h1>
-          {subtitle && (
-            <p className="text-xs text-stone-500">{subtitle}</p>
-          )}
+      <header className="h-16 px-4 sm:px-8 bg-white border-b border-[#E8E2D5] flex items-center justify-between sticky top-0 z-30">
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            onClick={toggleSidebar}
+            className="p-1 rounded-md text-stone-500 hover:text-stone-900 hover:bg-stone-100 lg:hidden cursor-pointer shrink-0"
+            aria-label="Toggle Sidebar"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          <div className="min-w-0">
+            <h1 className="text-sm sm:text-lg font-bold text-stone-900 leading-tight truncate">
+              {title || 'Dashboard'}
+            </h1>
+            {subtitle && (
+              <p className="text-[10px] sm:text-xs text-stone-500 truncate">{subtitle}</p>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-3">

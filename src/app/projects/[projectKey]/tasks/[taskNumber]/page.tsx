@@ -124,7 +124,7 @@ export default function TaskDetailPage() {
         projectId={project.id}
       />
 
-      <div className="p-8 max-w-7xl w-full mx-auto space-y-6">
+      <div className="p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6">
         {/* Breadcrumb back & Actions */}
         <div className="flex items-center justify-between">
           <Link
@@ -135,7 +135,7 @@ export default function TaskDetailPage() {
             <span>Back to {project.name}</span>
           </Link>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-stone-400 font-mono">
+            <span className="hidden sm:inline text-xs text-stone-400 font-mono">
               ID: {task.id}
             </span>
             {isReviewer && (
@@ -436,13 +436,13 @@ export default function TaskDetailPage() {
               ) : (
                 <div className="divide-y divide-stone-100">
                   {taskAttachments.map(att => (
-                    <div key={att.id} className="py-2.5 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2.5">
-                        <Paperclip className="w-3.5 h-3.5 text-stone-400" />
-                        <span className="font-semibold text-stone-900">{att.file_name}</span>
+                    <div key={att.id} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 text-xs">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <Paperclip className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                        <span className="font-semibold text-stone-900 break-all">{att.file_name}</span>
                         <span className="text-[11px] text-stone-400">({Math.round((att.file_size || 0) / 1024)} KB)</span>
                       </div>
-                      <span className="text-[11px] text-stone-500">
+                      <span className="text-[11px] text-stone-500 shrink-0 self-end sm:self-center">
                         Uploaded by {att.user?.full_name || 'User'}
                       </span>
                     </div>

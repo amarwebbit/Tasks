@@ -41,7 +41,7 @@ export default function OrganizationDashboard() {
         subtitle="Multi-Project accountability, task flow velocity, and team workload summary"
       />
 
-      <div className="p-8 space-y-8 max-w-7xl w-full mx-auto">
+      <div className="p-4 sm:p-8 space-y-8 max-w-7xl w-full mx-auto">
         {/* Top Summary Metrics */}
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
           <div className="p-4 bg-white border border-[#E8E2D5] rounded-xl shadow-2xs">
@@ -282,18 +282,18 @@ export default function OrganizationDashboard() {
                 const pKey = task?.project?.project_key || 'TRI';
 
                 return (
-                  <div key={act.id} className="py-3 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono font-bold text-stone-700 bg-stone-100 px-1.5 py-0.5 rounded text-[11px]">
+                  <div key={act.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-3 text-xs">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono font-bold text-stone-700 bg-stone-100 px-1.5 py-0.5 rounded text-[11px] shrink-0">
                         {pKey}-{task?.task_number || '00'}
                       </span>
-                      <span className="text-stone-900 font-medium">{act.user?.full_name || 'User'}</span>
+                      <span className="text-stone-900 font-medium whitespace-nowrap">{act.user?.full_name || 'User'}</span>
                       <span className="text-stone-600">
                         {act.action.toLowerCase().replace(/_/g, ' ')}
                         {act.new_value ? ` → ${act.new_value}` : ''}
                       </span>
                     </div>
-                    <span className="text-[11px] text-stone-400">
+                    <span className="text-[11px] text-stone-400 shrink-0 self-end sm:self-center">
                       {new Date(act.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
