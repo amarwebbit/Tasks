@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTrinetra } from '@/lib/store';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 import { Header } from '@/components/Header';
 import { StatusBadge } from '@/components/StatusBadge';
 import { PriorityBadge } from '@/components/PriorityBadge';
@@ -66,6 +67,7 @@ export default function TaskDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [isDeletingTask, setIsDeletingTask] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const project = projects.find(p => p.project_key === projectKey);
   const task = tasks.find(
@@ -109,10 +111,43 @@ export default function TaskDetailPage() {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // In real production, upload to Supabase Storage bucket and get public URL
-      const fileUrl = URL.createObjectURL(file);
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const supabase = getSupabaseClient();
+      if (!supabase) {
+        throw new Error('Supabase client is not configured');
+      }
+
+      // Clean non-ASCII or problematic characters from filename
+      const fileNameClean = file.name.replace(/[^\x00-\x7F]/g, '');
+      const filePath = `${task.id}/${Date.now()}_${fileNameClean}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('task-attachments')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        throw new Error(
+          `Failed to upload to Supabase Storage. Please ensure a storage bucket named "task-attachments" exists in your Supabase dashboard and is set to Public.`
+        );
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('task-attachments')
+        .getPublicUrl(filePath);
+
+      const fileUrl = urlData.publicUrl;
       await addAttachment(task.id, file.name, fileUrl, file.size);
+    } catch (err: any) {
+      alert(err.message || 'Failed to upload attachment');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -424,10 +459,18 @@ export default function TaskDetailPage() {
                     Task Deliverables & Files ({taskAttachments.length})
                   </h3>
                 </div>
-                <label className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-semibold cursor-pointer transition-colors">
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Attach File</span>
-                  <input type="file" onChange={handleFileUpload} className="hidden" />
+                <label
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    isUploading
+                      ? 'bg-stone-50 text-stone-400 cursor-not-allowed border border-stone-200'
+                      : 'bg-stone-100 hover:bg-stone-200 text-stone-700 cursor-pointer'
+                  }`}
+                >
+                  <Upload className={`w-3.5 h-3.5 ${isUploading ? 'animate-bounce' : ''}`} />
+                  <span>{isUploading ? 'Uploading...' : 'Attach File'}</span>
+                  {!isUploading && (
+                    <input type="file" onChange={handleFileUpload} className="hidden" />
+                  )}
                 </label>
               </div>
 
@@ -436,10 +479,21 @@ export default function TaskDetailPage() {
               ) : (
                 <div className="divide-y divide-stone-100">
                   {taskAttachments.map(att => (
-                    <div key={att.id} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 text-xs">
+                    <div key={att.id} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 text-xs hover:bg-stone-50/50 px-2 rounded-lg transition-colors">
                       <div className="flex flex-wrap items-center gap-2.5">
                         <Paperclip className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                        <span className="font-semibold text-stone-900 break-all">{att.file_name}</span>
+                        {att.file_url ? (
+                          <a
+                            href={att.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-semibold text-purple-900 hover:text-purple-950 hover:underline break-all inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            {att.file_name}
+                          </a>
+                        ) : (
+                          <span className="font-semibold text-stone-900 break-all">{att.file_name}</span>
+                        )}
                         <span className="text-[11px] text-stone-400">({Math.round((att.file_size || 0) / 1024)} KB)</span>
                       </div>
                       <span className="text-[11px] text-stone-500 shrink-0 self-end sm:self-center">
