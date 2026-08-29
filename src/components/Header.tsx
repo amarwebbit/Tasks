@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { useTrinetra } from '@/lib/store';
-import { Plus, ShieldCheck, Menu } from 'lucide-react';
+import { Plus, ShieldCheck, Menu, Upload } from 'lucide-react';
 import { CreateTaskModal } from './CreateTaskModal';
+import { BulkUploadModal } from './BulkUploadModal';
 import { useUi } from '@/lib/ui-context';
 
 interface HeaderProps {
@@ -16,6 +17,7 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, projectId }) =>
   const { currentUser } = useTrinetra();
   const { toggleSidebar } = useUi();
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
 
   return (
     <>
@@ -41,10 +43,21 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, projectId }) =>
 
         <div className="flex items-center gap-3">
           {currentUser && (
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F4EFE6] border border-[#E8E2D5] text-xs text-stone-700">
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F4EFE6] border border-[#E8E2D5] text-xs text-stone-700">
               <ShieldCheck className="w-3.5 h-3.5 text-purple-900" />
               <span>Active: <strong>{currentUser.full_name}</strong></span>
             </div>
+          )}
+
+          {projectId && (
+            <button
+              onClick={() => setIsBulkUploadOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-300 text-stone-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+            >
+              <Upload className="w-4 h-4 text-purple-950" />
+              <span className="hidden sm:inline">Upload Week's Tasks</span>
+              <span className="sm:hidden">Upload</span>
+            </button>
           )}
 
           <button
@@ -62,6 +75,14 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, projectId }) =>
         onClose={() => setIsCreateTaskOpen(false)}
         defaultProjectId={projectId}
       />
+
+      {projectId && (
+        <BulkUploadModal
+          isOpen={isBulkUploadOpen}
+          onClose={() => setIsBulkUploadOpen(false)}
+          projectId={projectId}
+        />
+      )}
     </>
   );
 };

@@ -93,6 +93,18 @@ interface TrinetraContextType {
     due_date?: string;
   }) => Promise<{ success: boolean; task?: Task; error?: string }>;
 
+  createTasksBulk: (
+    projectId: string,
+    tasksData: Array<{
+      title: string;
+      description?: string;
+      definition_of_done?: string;
+      assigned_to?: string;
+      priority: TaskPriority;
+      due_date?: string;
+    }>
+  ) => Promise<{ success: boolean; count?: number; error?: string }>;
+
   deleteTask: (taskId: string) => Promise<{ success: boolean; error?: string }>;
 
   acknowledgeTask: (taskId: string) => Promise<{ success: boolean; error?: string }>;
@@ -939,6 +951,102 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
     return { success: true, task: newTask };
   };
 
+  // 10b. Create Tasks in Bulk
+  const createTasksBulk = async (
+    projectId: string,
+    tasksData: Array<{
+      title: string;
+      description?: string;
+      definition_of_done?: string;
+      assigned_to?: string;
+      priority: TaskPriority;
+      due_date?: string;
+    }>
+  ) => {
+    if (!supabase || !currentUser) return { success: false, error: 'Not authenticated' };
+
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return { success: false, error: 'Project not found.' };
+
+    // Validate assignments and permissions
+    for (const t of tasksData) {
+      if (t.assigned_to && t.assigned_to !== currentUser.id && !canAssignInProject(currentUser.id, projectId)) {
+        return { success: false, error: 'Forbidden (403): You do not have permission to assign tasks to other users in this project.' };
+      }
+      if (t.assigned_to && !canReceiveInProject(t.assigned_to, projectId)) {
+        const assigneeUser = users.find(u => u.id === t.assigned_to);
+        return { success: false, error: `Forbidden (403): ${assigneeUser?.full_name || 'Selected user'} cannot receive tasks in this project.` };
+      }
+    }
+
+    // Format tasks for batch insertion
+    const insertData = tasksData.map(t => ({
+      project_id: projectId,
+      title: t.title,
+      description: t.description || null,
+      definition_of_done: t.definition_of_done || null,
+      created_by: currentUser.id,
+      assigned_to: t.assigned_to || null,
+      priority: t.priority,
+      status: t.assigned_to ? 'ASSIGNED' : 'DRAFT',
+      due_date: t.due_date || null,
+    }));
+
+    const { data: newTasks, error } = await supabase
+      .from('tasks')
+      .insert(insertData)
+      .select();
+
+    if (error) return { success: false, error: error.message };
+
+    // Batch insert activities and notifications
+    const activityLogs: any[] = [];
+    const notifications: any[] = [];
+
+    for (const newTask of newTasks) {
+      activityLogs.push({
+        task_id: newTask.id,
+        user_id: currentUser.id,
+        action: 'TASK_CREATED',
+        details: { title: newTask.title },
+      });
+
+      if (newTask.assigned_to) {
+        const assignee = users.find(u => u.id === newTask.assigned_to);
+        activityLogs.push({
+          task_id: newTask.id,
+          user_id: currentUser.id,
+          action: 'TASK_ASSIGNED',
+          old_value: 'Unassigned',
+          new_value: assignee?.full_name || 'Assignee',
+        });
+
+        // Notify assignee if not self-assigned
+        if (newTask.assigned_to !== currentUser.id) {
+          notifications.push({
+            user_id: newTask.assigned_to,
+            project_id: projectId,
+            task_id: newTask.id,
+            title: `Task Assigned: ${project.project_key}-${newTask.task_number}`,
+            message: `${currentUser.full_name} assigned "${newTask.title}" to you.`,
+            link: `/projects/${project.project_key}/tasks/${newTask.task_number}`,
+            type: 'TASK_ASSIGNED',
+          });
+        }
+      }
+    }
+
+    if (activityLogs.length > 0) {
+      await supabase.from('task_activity').insert(activityLogs);
+    }
+    if (notifications.length > 0) {
+      await supabase.from('notifications').insert(notifications);
+    }
+
+    await refreshData();
+    return { success: true, count: newTasks.length };
+  };
+
   // Delete Task (Task Creator, Team Leader, or Org Owner only)
   const deleteTask = async (taskId: string) => {
     if (!supabase || !currentUser) return { success: false, error: 'Not authenticated' };
@@ -1321,6 +1429,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
         cancelInvitation,
 
         createTask,
+        createTasksBulk,
         deleteTask,
         acknowledgeTask,
         startTask,
