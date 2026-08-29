@@ -31,6 +31,7 @@ interface ParsedTask {
   priority: TaskPriority;
   dueDate: string;
   definitionOfDone: string;
+  assignedTo: string;
 }
 
 export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
@@ -38,7 +39,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
   onClose,
   projectId
 }) => {
-  const { createTasksBulk, currentUser, projects } = useTrinetra();
+  const { createTasksBulk, currentUser, projects, getProjectMembers } = useTrinetra();
 
   const [activeTab, setActiveTab] = useState<'paste' | 'file'>('paste');
   const [pasteText, setPasteText] = useState('');
@@ -51,6 +52,33 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const project = projects.find(p => p.id === projectId);
+  const projectMembers = projectId ? getProjectMembers(projectId) : [];
+  const permittedAssignees = projectMembers.filter(m => m.can_receive_tasks);
+
+  const findMatchingMemberId = (raw: string): string => {
+    if (!raw) return currentUser?.id || '';
+    const clean = raw.toLowerCase().trim();
+    
+    // 1. Try matching by Email
+    const matchByEmail = permittedAssignees.find(
+      m => m.profile?.email.toLowerCase() === clean
+    );
+    if (matchByEmail) return matchByEmail.user_id;
+    
+    // 2. Try matching by Full Name
+    const matchByName = permittedAssignees.find(
+      m => m.profile?.full_name?.toLowerCase() === clean
+    );
+    if (matchByName) return matchByName.user_id;
+
+    // 3. Try matching by User ID
+    const matchById = permittedAssignees.find(
+      m => m.user_id === raw.trim()
+    );
+    if (matchById) return matchById.user_id;
+
+    return currentUser?.id || '';
+  };
 
   useEffect(() => {
     if (!isOpen) {
@@ -124,6 +152,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
     let priorityIdx = -1;
     let dateIdx = -1;
     let dodIdx = -1;
+    let assigneeIdx = -1;
 
     // Check if headers exist, otherwise default to column positions
     const hasHeaders = headers.includes('title') || headers.includes('task') || headers.includes('taskname');
@@ -140,6 +169,8 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
           dateIdx = index;
         } else if (header.includes('dod') || header.includes('done') || header.includes('criteria') || header.includes('accept')) {
           dodIdx = index;
+        } else if (header.includes('assign') || header.includes('user') || header.includes('member') || header.includes('person') || header.includes('who') || header.includes('for')) {
+          assigneeIdx = index;
         }
       });
     }
@@ -159,6 +190,8 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
 
         const dueDate = dateIdx !== -1 ? row[dateIdx] || '' : '';
         const definitionOfDone = dodIdx !== -1 ? row[dodIdx] || '' : '';
+        const rawAssignee = assigneeIdx !== -1 ? (row[assigneeIdx] || '').trim() : '';
+        const assignedTo = findMatchingMemberId(rawAssignee);
 
         return {
           selected: true,
@@ -166,7 +199,8 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
           description,
           priority,
           dueDate,
-          definitionOfDone
+          definitionOfDone,
+          assignedTo
         };
       })
       .filter((t): t is ParsedTask => t !== null);
@@ -309,12 +343,12 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
     setError(null);
 
     try {
-      // Map and assign to current user automatically
+      // Map and assign to selected users
       const tasksToInsert = selectedTasks.map(t => ({
         title: t.title.trim(),
         description: t.description.trim() || undefined,
         definition_of_done: t.definitionOfDone.trim() || undefined,
-        assigned_to: currentUser?.id, // Auto-assign to current uploading member
+        assigned_to: t.assignedTo || undefined,
         priority: t.priority,
         due_date: t.dueDate ? new Date(t.dueDate).toISOString() : undefined
       }));
@@ -513,7 +547,8 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
                           description: '',
                           priority: 'MEDIUM',
                           dueDate: '',
-                          definitionOfDone: ''
+                          definitionOfDone: '',
+                          assignedTo: currentUser?.id || ''
                         }
                       ]);
                     }}
@@ -534,8 +569,9 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
                         <th className="py-2.5 px-3 w-10 text-center">Import</th>
                         <th className="py-2.5 px-3">Title *</th>
                         <th className="py-2.5 px-3">Description</th>
-                        <th className="py-2.5 px-3 w-28">Priority</th>
-                        <th className="py-2.5 px-3 w-36">Deadline</th>
+                        <th className="py-2.5 px-3 w-24">Priority</th>
+                        <th className="py-2.5 px-3 w-32">Deadline</th>
+                        <th className="py-2.5 px-3 w-40">Assignee</th>
                         <th className="py-2.5 px-3">Definition of Done</th>
                         <th className="py-2.5 px-3 w-10 text-center"></th>
                       </tr>
@@ -598,6 +634,20 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
                               onChange={e => handleCellChange(idx, 'dueDate', e.target.value)}
                               className="w-full px-1.5 py-1 bg-transparent border border-transparent hover:border-stone-300 rounded-md focus:bg-white focus:outline-none focus:ring-1 focus:ring-purple-800 text-[11px]"
                             />
+                          </td>
+                          <td className="py-2 px-3">
+                            <select
+                              value={task.assignedTo}
+                              onChange={e => handleCellChange(idx, 'assignedTo', e.target.value)}
+                              className="w-full px-1 py-1 bg-transparent border border-transparent hover:border-stone-300 rounded-md focus:bg-white focus:outline-none focus:ring-1 focus:ring-purple-800 text-stone-900"
+                            >
+                              <option value="">Unassigned (Draft)</option>
+                              {permittedAssignees.map(m => (
+                                <option key={m.user_id} value={m.user_id}>
+                                  {m.profile?.full_name || m.profile?.email || m.user_id} {m.user_id === currentUser?.id ? '(You)' : ''}
+                                </option>
+                              ))}
+                            </select>
                           </td>
                           <td className="py-2 px-3">
                             <input

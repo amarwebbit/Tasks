@@ -1,18 +1,18 @@
-Title,Description,Priority,Due Date,Definition of Done
-Refactor Dashboard Workload Queries,Optimize database queries for the team workload widget and project progress calculation to resolve high latency on page load.,HIGH,2026-08-31,"1. Workload query completes under 100ms
+Title,Description,Priority,Due Date,Assignee,Definition of Done
+Refactor Dashboard Workload Queries,Optimize database queries for the team workload widget and project progress calculation to resolve high latency on page load.,HIGH,2026-08-31,leader@example.com,"1. Workload query completes under 100ms
 2. Memory usage reduced by 30%
 3. Tested on staging database"
-Implement Multi-Factor Authentication,Add TOTP based MFA to user profiles with recovery codes and settings toggles in security tab.,URGENT,2026-09-01,"1. QR code displays correctly
+Implement Multi-Factor Authentication,Add TOTP based MFA to user profiles with recovery codes and settings toggles in security tab.,URGENT,2026-09-01,developer@example.com,"1. QR code displays correctly
 2. Recovery codes generated and downloadable
 3. Integration tests cover correct and incorrect pins"
-Design Onboarding Walkthrough,Create interactive dashboard tour utilizing react-joyride to guide first-time users through the task creation and export cycles.,LOW,2026-09-02,"1. Triggers on first login
+Design Onboarding Walkthrough,Create interactive dashboard tour utilizing react-joyride to guide first-time users through the task creation and export cycles.,LOW,2026-09-02,designer@example.com,"1. Triggers on first login
 2. Can be skipped or replayed from help page
 3. Fully responsive on mobile devices"
-Draft Q3 Product Roadmap,Outline priority features and timelines for the next milestone aligning with the new AI-driven auto-scheduler spec.,MEDIUM,2026-09-03,"1. Slide deck or PDF document exported
+Draft Q3 Product Roadmap,Outline priority features and timelines for the next milestone aligning with the new AI-driven auto-scheduler spec.,MEDIUM,2026-09-03,productmanager@example.com,"1. Slide deck or PDF document exported
 2. Shared with team leaders for feedback"
-Conduct Security Penetration Tests,Review public Supabase RLS policies and run automated vulnerability scanning on authentication and session handshakes.,HIGH,2026-09-04,"1. Clean audit report generated
+Conduct Security Penetration Tests,Review public Supabase RLS policies and run automated vulnerability scanning on authentication and session handshakes.,HIGH,2026-09-04,secops@example.com,"1. Clean audit report generated
 2. Patch any medium or high vulnerabilities found"
-Resolve High Memory Profiler Leak,Debug and resolve React state memory leak in the real-time activity log component when listening to SSE events.,HIGH,2026-09-04,"1. No memory growth observed after 1 hour of continuous logs
+Resolve High Memory Profiler Leak,Debug and resolve React state memory leak in the real-time activity log component when listening to SSE events.,HIGH,2026-09-04,developer@example.com,"1. No memory growth observed after 1 hour of continuous logs
 2. Profile heap dump verified in Chrome DevTools"
-Update API Documentation,Document the new bulk import and export endpoints in Swagger / OpenAPI format for external developer integrations.,MEDIUM,2026-09-04,"1. All endpoint parameters and responses documented
+Update API Documentation,Document the new bulk import and export endpoints in Swagger / OpenAPI format for external developer integrations.,MEDIUM,2026-09-04,technicalwriter@example.com,"1. All endpoint parameters and responses documented
 2. Postman collection updated and exported"
