@@ -43,37 +43,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Fetch project memberships for the user
-    const { data: userMemberships } = await clientSupabase
-      .from('project_members')
-      .select('project_id')
-      .eq('user_id', user.id)
-      .eq('status', 'ACTIVE');
-    const memberProjectIds = (userMemberships || []).map(m => m.project_id);
-
-    // Fetch org owner memberships
-    const { data: userOrgs } = await clientSupabase
-      .from('organization_members')
-      .select('organization_id')
-      .eq('user_id', user.id)
-      .eq('role', 'OWNER')
-      .eq('status', 'ACTIVE');
-    const ownedOrgIds = (userOrgs || []).map(o => o.organization_id);
-
-    // Query projects the user has access to (either as project member or org owner)
-    const pQuery = clientSupabase.from('projects').select('id');
-    let filterString = '';
-    if (memberProjectIds.length > 0) {
-      filterString += `id.in.(${memberProjectIds.join(',')})`;
-    }
-    if (ownedOrgIds.length > 0) {
-      if (filterString) filterString += ',';
-      filterString += `organization_id.in.(${ownedOrgIds.join(',')})`;
-    }
-
-    const { data: accessibleProjects } = await pQuery.or(filterString || 'id.eq.00000000-0000-0000-0000-000000000000');
-    const accessibleProjectIds = (accessibleProjects || []).map(p => p.id);
-
     if (!projectId || projectId === 'ALL') {
       return NextResponse.json(
         { error: 'Global downloads are disabled. Please select a specific project to export.' },
@@ -81,7 +50,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!accessibleProjectIds.includes(projectId)) {
+    // Verify access to the requested project using the user's RLS session context
+    const { data: targetProjectData, error: projError } = await clientSupabase
+      .from('projects')
+      .select('id')
+      .eq('id', projectId)
+      .maybeSingle();
+
+    if (projError || !targetProjectData) {
       return NextResponse.json({ error: 'Access denied to this project' }, { status: 403 });
     }
 
