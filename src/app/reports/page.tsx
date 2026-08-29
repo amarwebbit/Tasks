@@ -64,7 +64,16 @@ export default function ReportsPage() {
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to generate Excel report');
+      if (!res.ok) {
+        let errorMsg = 'Failed to generate Excel report';
+        try {
+          const errData = await res.json();
+          if (errData?.error) {
+            errorMsg = errData.error;
+          }
+        } catch (_) {}
+        throw new Error(errorMsg);
+      }
 
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -79,9 +88,9 @@ export default function ReportsPage() {
       window.URL.revokeObjectURL(url);
 
       setExportMessage(`Successfully generated and downloaded ${type === 'QUICK' ? 'Quick Report' : 'Complete 7-Sheet Workbook'}.`);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Export generation failed. Please see console logs.');
+      alert(`Export generation failed: ${err.message || err}`);
     } finally {
       setIsExporting(false);
     }

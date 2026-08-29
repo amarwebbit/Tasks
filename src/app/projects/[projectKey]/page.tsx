@@ -138,7 +138,16 @@ export default function ProjectDetailPage() {
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to generate report');
+      if (!res.ok) {
+        let errorMsg = 'Failed to generate report';
+        try {
+          const errData = await res.json();
+          if (errData?.error) {
+            errorMsg = errData.error;
+          }
+        } catch (_) {}
+        throw new Error(errorMsg);
+      }
 
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -149,9 +158,9 @@ export default function ProjectDetailPage() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Report export failed. Please check console.');
+      alert(`Report export failed: ${err.message || err}`);
     } finally {
       setIsExporting(false);
     }
