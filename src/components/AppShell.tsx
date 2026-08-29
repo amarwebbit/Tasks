@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react';
 
 import { usePathname } from 'next/navigation';
 import { UiProvider } from '@/lib/ui-context';
+import { SecurityGuard } from './SecurityGuard';
 
 const InnerShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const pathname = usePathname();
@@ -68,6 +69,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
   return (
     <TrinetraProvider>
       <UiProvider>
+        <SecurityGuard />
         <InnerShell>{children}</InnerShell>
       </UiProvider>
     </TrinetraProvider>
