@@ -20,10 +20,9 @@ export const SecurityGuard: React.FC = () => {
       setIsLocked(true);
     };
 
-    // 1. Prevent Right-Click Context Menu
+    // 1. Prevent Right-Click Context Menu (Block menu, but do not trigger lockdown)
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
-      triggerLockdown();
     };
     document.addEventListener('contextmenu', handleContextMenu);
 
