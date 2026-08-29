@@ -5,6 +5,9 @@ import { AppShell } from "@/components/AppShell";
 export const metadata: Metadata = {
   title: "Trinetra | Multi-Project Task Management & Accountability",
   description: "Eliminate coordination gaps with structured task ownership, granular assignment permissions, and multi-sheet audit reports.",
+  icons: {
+    icon: "/logo.png",
+  },
 };
 
 export default function RootLayout({

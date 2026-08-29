@@ -75,8 +75,8 @@ export const Sidebar: React.FC = () => {
         {/* Organization Brand Header */}
         <div className="p-5 border-b border-[#E8E2D5] bg-white/60 flex items-center justify-between">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-[#4A154B] flex items-center justify-center text-white font-bold text-sm shadow-xs shrink-0">
-              T
+            <div className="w-8 h-8 rounded-lg bg-[#0E0C12] border border-stone-200/50 flex items-center justify-center text-white shadow-xs shrink-0 p-1">
+              <img src="/logo.png" alt="Trinetra Logo" className="w-full h-full object-contain" />
             </div>
             <div className="truncate">
               <div className="flex items-center gap-1.5 min-w-0">

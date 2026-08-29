@@ -56,8 +56,8 @@ export const AuthScreen: React.FC = () => {
             <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse" />
             <span>Public Beta v0.9.5</span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-[#4A154B] text-white flex items-center justify-center font-bold text-xl mx-auto shadow-sm">
-            T
+          <div className="w-16 h-16 rounded-2xl bg-[#0E0C12] border border-stone-200/50 flex items-center justify-center text-white shadow-md mx-auto p-2.5">
+            <img src="/logo.png" alt="Trinetra Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900">
             Trinetra Task Platform
