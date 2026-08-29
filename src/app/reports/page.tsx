@@ -12,7 +12,7 @@ import { PaywallModal } from '@/components/PaywallModal';
 export default function ReportsPage() {
   const { projects, users, tasks, isPro } = useTrinetra();
 
-  const [projectId, setProjectId] = useState('ALL');
+  const [projectId, setProjectId] = useState('');
   const [assigneeId, setAssigneeId] = useState('ALL');
   const [status, setStatus] = useState('ALL');
   const [priority, setPriority] = useState('ALL');
@@ -21,6 +21,12 @@ export default function ReportsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (projects.length > 0 && !projectId) {
+      setProjectId(projects[0].id);
+    }
+  }, [projects, projectId]);
 
   // Compute filtered dataset for preview
   const filteredTasks = tasks.filter(t => {
@@ -132,8 +138,8 @@ export default function ReportsPage() {
 
             <button
               onClick={() => handleDownload('QUICK')}
-              disabled={isExporting}
-              className="mt-5 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#F4EFE6] hover:bg-[#ECE5D8] text-stone-800 text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              disabled={isExporting || !projectId}
+              className="mt-5 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#F4EFE6] hover:bg-[#ECE5D8] text-stone-800 text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4 text-purple-900" />
               <span>{isExporting ? 'Generating XLSX...' : 'Download Quick Report (.xlsx)'}</span>
@@ -166,8 +172,8 @@ export default function ReportsPage() {
 
             <button
               onClick={() => handleDownload('COMPLETE')}
-              disabled={isExporting}
-              className={`mt-5 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer ${
+              disabled={isExporting || !projectId}
+              className={`mt-5 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                 !isPro
                   ? 'bg-linear-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-stone-950 font-black'
                   : 'bg-[#4A154B] hover:bg-[#3B0F3C] text-white'
@@ -209,12 +215,16 @@ export default function ReportsPage() {
               <select
                 value={projectId}
                 onChange={e => setProjectId(e.target.value)}
-                className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-lg text-xs text-stone-900"
+                className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-lg text-xs text-stone-900 font-semibold"
+                disabled={projects.length === 0}
               >
-                <option value="ALL">All Projects</option>
-                {projects.map(p => (
-                  <option key={p.id} value={p.id}>[{p.project_key}] {p.name}</option>
-                ))}
+                {projects.length === 0 ? (
+                  <option value="">No active projects</option>
+                ) : (
+                  projects.map(p => (
+                    <option key={p.id} value={p.id}>[{p.project_key}] {p.name}</option>
+                  ))
+                )}
               </select>
             </div>
 

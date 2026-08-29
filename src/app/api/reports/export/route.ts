@@ -74,10 +74,15 @@ export async function POST(req: NextRequest) {
     const { data: accessibleProjects } = await pQuery.or(filterString || 'id.eq.00000000-0000-0000-0000-000000000000');
     const accessibleProjectIds = (accessibleProjects || []).map(p => p.id);
 
-    if (projectId && projectId !== 'ALL') {
-      if (!accessibleProjectIds.includes(projectId)) {
-        return NextResponse.json({ error: 'Access denied to this project' }, { status: 403 });
-      }
+    if (!projectId || projectId === 'ALL') {
+      return NextResponse.json(
+        { error: 'Global downloads are disabled. Please select a specific project to export.' },
+        { status: 400 }
+      );
+    }
+
+    if (!accessibleProjectIds.includes(projectId)) {
+      return NextResponse.json({ error: 'Access denied to this project' }, { status: 403 });
     }
 
     // Fetch Profiles
@@ -89,24 +94,16 @@ export async function POST(req: NextRequest) {
     const projectsMap = new Map((projectsData || []).map(p => [p.id, p]));
 
     let targetProject: Project | undefined;
-    if (projectId && projectId !== 'ALL') {
-      const p = projectsMap.get(projectId);
-      if (p) {
-        targetProject = {
-          ...p,
-          team_leader: profileMap.get(p.team_leader_id),
-        };
-      }
+    const p = projectsMap.get(projectId);
+    if (p) {
+      targetProject = {
+        ...p,
+        team_leader: profileMap.get(p.team_leader_id),
+      };
     }
 
     // Build Task Query
-    let query = supabase.from('tasks').select('*');
-
-    if (projectId && projectId !== 'ALL') {
-      query = query.eq('project_id', projectId);
-    } else {
-      query = query.in('project_id', accessibleProjectIds);
-    }
+    let query = supabase.from('tasks').select('*').eq('project_id', projectId);
     if (assigneeId && assigneeId !== 'ALL') {
       query = query.eq('assigned_to', assigneeId);
     }
