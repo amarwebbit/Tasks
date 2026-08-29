@@ -17,6 +17,11 @@ export async function POST(req: NextRequest) {
     const token = authHeader.replace('Bearer ', '');
     const clientSupabase = createClient(supabaseUrl, supabaseAnonKey, {
       auth: { persistSession: false },
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
     });
 
     const { data: { user }, error: authError } = await clientSupabase.auth.getUser(token);
