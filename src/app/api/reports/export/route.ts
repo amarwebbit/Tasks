@@ -2,9 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateExcelWorkbook } from '@/lib/excelExport';
 import { getServiceSupabase } from '@/lib/supabaseServer';
 import { Task, Project, TaskActivity, TaskComment, TaskAttachment, ProjectMember, EmailEvent } from '@/types/database';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export async function POST(req: NextRequest) {
   try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: 'Missing authentication token' }, { status: 401 });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const clientSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false },
+    });
+
+    const { data: { user }, error: authError } = await clientSupabase.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Invalid or expired session token' }, { status: 401 });
+    }
+
     const body = await req.json();
     const {
       type = 'COMPLETE',
@@ -22,6 +41,43 @@ export async function POST(req: NextRequest) {
         { error: 'Supabase database connection is not configured.' },
         { status: 500 }
       );
+    }
+
+    // Fetch project memberships for the user
+    const { data: userMemberships } = await clientSupabase
+      .from('project_members')
+      .select('project_id')
+      .eq('user_id', user.id)
+      .eq('status', 'ACTIVE');
+    const memberProjectIds = (userMemberships || []).map(m => m.project_id);
+
+    // Fetch org owner memberships
+    const { data: userOrgs } = await clientSupabase
+      .from('organization_members')
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .eq('role', 'OWNER')
+      .eq('status', 'ACTIVE');
+    const ownedOrgIds = (userOrgs || []).map(o => o.organization_id);
+
+    // Query projects the user has access to (either as project member or org owner)
+    const pQuery = clientSupabase.from('projects').select('id');
+    let filterString = '';
+    if (memberProjectIds.length > 0) {
+      filterString += `id.in.(${memberProjectIds.join(',')})`;
+    }
+    if (ownedOrgIds.length > 0) {
+      if (filterString) filterString += ',';
+      filterString += `organization_id.in.(${ownedOrgIds.join(',')})`;
+    }
+
+    const { data: accessibleProjects } = await pQuery.or(filterString || 'id.eq.00000000-0000-0000-0000-000000000000');
+    const accessibleProjectIds = (accessibleProjects || []).map(p => p.id);
+
+    if (projectId && projectId !== 'ALL') {
+      if (!accessibleProjectIds.includes(projectId)) {
+        return NextResponse.json({ error: 'Access denied to this project' }, { status: 403 });
+      }
     }
 
     // Fetch Profiles
@@ -48,6 +104,8 @@ export async function POST(req: NextRequest) {
 
     if (projectId && projectId !== 'ALL') {
       query = query.eq('project_id', projectId);
+    } else {
+      query = query.in('project_id', accessibleProjectIds);
     }
     if (assigneeId && assigneeId !== 'ALL') {
       query = query.eq('assigned_to', assigneeId);

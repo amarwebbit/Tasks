@@ -15,7 +15,8 @@ const getAdminSupabase = () => {
 export async function GET(req: NextRequest) {
   try {
     const adminKey = req.headers.get('x-admin-key');
-    if (adminKey !== 'TRINETRA_ADMIN_2026') {
+    const systemAdminKey = process.env.ADMIN_SECRET_KEY || 'TRINETRA_ADMIN_2026';
+    if (adminKey !== systemAdminKey) {
       return NextResponse.json({ error: 'Unauthorized admin access' }, { status: 401 });
     }
 
@@ -37,7 +38,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const adminKey = req.headers.get('x-admin-key');
-    if (adminKey !== 'TRINETRA_ADMIN_2026') {
+    const systemAdminKey = process.env.ADMIN_SECRET_KEY || 'TRINETRA_ADMIN_2026';
+    if (adminKey !== systemAdminKey) {
       return NextResponse.json({ error: 'Unauthorized admin access' }, { status: 401 });
     }
 
@@ -75,7 +77,8 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const adminKey = req.headers.get('x-admin-key');
-    if (adminKey !== 'TRINETRA_ADMIN_2026') {
+    const systemAdminKey = process.env.ADMIN_SECRET_KEY || 'TRINETRA_ADMIN_2026';
+    if (adminKey !== systemAdminKey) {
       return NextResponse.json({ error: 'Unauthorized admin access' }, { status: 401 });
     }
 

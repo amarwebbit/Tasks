@@ -26,12 +26,13 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
-const ADMIN_MASTER_PASSKEY = 'TRINETRA_ADMIN_2026';
+
 
 export default function StealthAdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passkeyInput, setPasskeyInput] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [adminPasskey, setAdminPasskey] = useState('');
 
   const [activeTab, setActiveTab] = useState<'users' | 'coupons'>('users');
   const [usersList, setUsersList] = useState<AdminUserStats[]>([]);
@@ -52,22 +53,36 @@ export default function StealthAdminPage() {
   // Check session storage on mount
   useEffect(() => {
     const saved = sessionStorage.getItem('trinetra_stealth_admin');
-    if (saved === ADMIN_MASTER_PASSKEY) {
+    if (saved) {
       setIsAuthenticated(true);
-      fetchAdminData(ADMIN_MASTER_PASSKEY);
+      setAdminPasskey(saved);
+      fetchAdminData(saved);
     }
   }, []);
 
-  const handleAuthenticate = (e: React.FormEvent) => {
+  const handleAuthenticate = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+    setIsLoading(true);
 
-    if (passkeyInput.trim() === ADMIN_MASTER_PASSKEY || passkeyInput.trim() === 'admin123') {
-      setIsAuthenticated(true);
-      sessionStorage.setItem('trinetra_stealth_admin', ADMIN_MASTER_PASSKEY);
-      fetchAdminData(ADMIN_MASTER_PASSKEY);
-    } else {
-      setAuthError('Access Denied: Invalid Security Key');
+    const enteredKey = passkeyInput.trim();
+    try {
+      const usersRes = await fetch('/api/admin/users', {
+        headers: { 'x-admin-key': enteredKey },
+      });
+
+      if (usersRes.ok) {
+        setIsAuthenticated(true);
+        setAdminPasskey(enteredKey);
+        sessionStorage.setItem('trinetra_stealth_admin', enteredKey);
+        fetchAdminData(enteredKey);
+      } else {
+        setAuthError('Access Denied: Invalid Security Key');
+      }
+    } catch (err) {
+      setAuthError('Authentication failed. Please check network.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -111,7 +126,7 @@ export default function StealthAdminPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-key': ADMIN_MASTER_PASSKEY,
+          'x-admin-key': adminPasskey,
         },
         body: JSON.stringify({
           userId,
@@ -121,7 +136,7 @@ export default function StealthAdminPage() {
       });
 
       if (res.ok) {
-        await fetchAdminData(ADMIN_MASTER_PASSKEY);
+        await fetchAdminData(adminPasskey);
       } else {
         alert('Failed to update user plan');
       }
@@ -140,7 +155,7 @@ export default function StealthAdminPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-key': ADMIN_MASTER_PASSKEY,
+          'x-admin-key': adminPasskey,
         },
         body: JSON.stringify({
           code: couponCode.trim().toUpperCase(),
@@ -155,7 +170,7 @@ export default function StealthAdminPage() {
         setIsCouponModalOpen(false);
         setCouponCode('');
         setDiscountValue(50);
-        await fetchAdminData(ADMIN_MASTER_PASSKEY);
+        await fetchAdminData(adminPasskey);
       } else {
         const data = await res.json();
         alert(data.error || 'Failed to create coupon');
@@ -172,10 +187,10 @@ export default function StealthAdminPage() {
     try {
       const res = await fetch(`/api/admin/coupons?id=${id}`, {
         method: 'DELETE',
-        headers: { 'x-admin-key': ADMIN_MASTER_PASSKEY },
+        headers: { 'x-admin-key': adminPasskey },
       });
       if (res.ok) {
-        await fetchAdminData(ADMIN_MASTER_PASSKEY);
+        await fetchAdminData(adminPasskey);
       }
     } catch (err) {
       console.error('Error deleting coupon:', err);
@@ -284,7 +299,7 @@ export default function StealthAdminPage() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => fetchAdminData(ADMIN_MASTER_PASSKEY)}
+            onClick={() => fetchAdminData(adminPasskey)}
             disabled={isLoading}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-stone-300 border border-white/10 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
           >

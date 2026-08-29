@@ -35,15 +35,26 @@ export async function POST(req: NextRequest) {
 
     const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET;
 
-    // Verify HMAC signature if live credentials exist and not a 100% free coupon
-    if (razorpayKeySecret && razorpay_signature && !isFree) {
-      const generatedSignature = crypto
-        .createHmac('sha256', razorpayKeySecret)
-        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-        .digest('hex');
+    // Verify HMAC signature unless it's a 100% free coupon
+    if (!isFree) {
+      if (!razorpayKeySecret) {
+        // Enforce configuration in production
+        if (process.env.NODE_ENV === 'production') {
+          return NextResponse.json({ error: 'Payment gateway is not configured' }, { status: 500 });
+        }
+      } else {
+        if (!razorpay_signature) {
+          return NextResponse.json({ error: 'Missing payment signature' }, { status: 400 });
+        }
 
-      if (generatedSignature !== razorpay_signature) {
-        return NextResponse.json({ error: 'Invalid payment signature' }, { status: 400 });
+        const generatedSignature = crypto
+          .createHmac('sha256', razorpayKeySecret)
+          .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+          .digest('hex');
+
+        if (generatedSignature !== razorpay_signature) {
+          return NextResponse.json({ error: 'Invalid payment signature' }, { status: 400 });
+        }
       }
     }
 

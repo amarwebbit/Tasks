@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTrinetra } from '@/lib/store';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 import { Header } from '@/components/Header';
 import { StatusBadge } from '@/components/StatusBadge';
 import { PriorityBadge } from '@/components/PriorityBadge';
@@ -42,9 +43,16 @@ export default function ReportsPage() {
       setIsExporting(true);
       setExportMessage(null);
 
+      const supabase = getSupabaseClient();
+      const sessionRes = await supabase?.auth.getSession();
+      const token = sessionRes?.data.session?.access_token;
+
       const res = await fetch('/api/reports/export', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           type,
           projectId,

@@ -121,9 +121,21 @@ const dispatchEmailNotification = async (payload: {
   projectId?: string;
 }) => {
   try {
+    const supabase = getSupabaseClient();
+    let token = '';
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        token = session.access_token;
+      }
+    }
+
     await fetch('/api/notifications/email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(payload),
     });
   } catch (err) {
