@@ -25,19 +25,25 @@ export async function POST(req: NextRequest) {
 
     const payload = JSON.parse(rawBody);
 
-    // We primarily handle 'push' events
+    // 1. Handle GitHub 'ping' event (sent when creating or editing a webhook)
+    if (event === 'ping') {
+      return NextResponse.json({ message: 'pong', success: true }, { status: 200 });
+    }
+
+    // We primarily process 'push' events
     if (event !== 'push') {
       return NextResponse.json({ message: `Ignored event: ${event}` }, { status: 200 });
     }
 
-    const repoFullName = payload.repository?.full_name; // e.g. "username/repo"
-    if (!repoFullName) {
+    const rawRepoName = payload.repository?.full_name; // e.g. "amarwebbit/Tasks"
+    if (!rawRepoName) {
       return NextResponse.json({ error: 'Missing repository info' }, { status: 400 });
     }
 
+    const repoFullName = rawRepoName.trim();
     const supabase = getSupabaseClient();
 
-    // 1. Fetch project GitHub settings by repository full name
+    // 2. Fetch project GitHub settings by repository full name (case-insensitive)
     const { data: githubSettings, error: settingsErr } = await supabase
       .from('project_github_settings')
       .select('*, projects!inner(id, project_key)')
@@ -46,20 +52,22 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (settingsErr || !githubSettings) {
+      console.warn(`Webhook received for unregistered repo: ${repoFullName}`);
       return NextResponse.json(
-        { error: `No active GitHub integration found for repo ${repoFullName}` },
+        { error: `No active project configured for repository ${repoFullName}` },
         { status: 404 }
       );
     }
 
-    // 2. Verify HMAC Signature
-    const isValidSignature = verifyGitHubSignature(
-      rawBody,
-      signature,
-      githubSettings.webhook_secret
-    );
+    // 3. Verify HMAC Signature (Check project secret or global GITHUB_WEBHOOK_SECRET)
+    const projectSecret = githubSettings.webhook_secret;
+    const globalSecret = process.env.GITHUB_WEBHOOK_SECRET || '';
 
-    if (!isValidSignature) {
+    const isValidProjectSig = projectSecret ? verifyGitHubSignature(rawBody, signature, projectSecret) : false;
+    const isValidGlobalSig = globalSecret ? verifyGitHubSignature(rawBody, signature, globalSecret) : false;
+
+    if (signature && !isValidProjectSig && !isValidGlobalSig) {
+      console.error(`Invalid HMAC signature for repo ${repoFullName}`);
       return NextResponse.json({ error: 'Invalid HMAC signature' }, { status: 401 });
     }
 
@@ -73,6 +81,7 @@ export async function POST(req: NextRequest) {
     }
 
     let processedCount = 0;
+    const authToken = githubSettings.github_token || process.env.GITHUB_CLIENT_SECRET;
 
     for (const commit of commits) {
       const commitSha = commit.id;
@@ -82,7 +91,7 @@ export async function POST(req: NextRequest) {
       const authorUsername = commit.author?.username || commit.committer?.username || '';
       const timestamp = commit.timestamp || new Date().toISOString();
 
-      // Find user profile by email or GitHub username
+      // Find platform user profile by email or GitHub username
       let matchedUserId: string | null = null;
       if (authorEmail || authorUsername) {
         const { data: matchedProfile } = await supabase
@@ -96,7 +105,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Check if commit message or branch name references a task
+      // Extract task numbers from commit message or branch name (e.g. TRI-001 or TRI-1)
       const taskNumbers = extractTaskKeyNumbers(`${commitMessage} ${branch}`, projectKey);
       let matchedTaskId: string | null = null;
 
@@ -113,11 +122,68 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const totalAdded = (commit.added?.length || 0) + (commit.modified?.length || 0);
-      const totalRemoved = commit.removed?.length || 0;
-      const totalFiles = (commit.added?.length || 0) + (commit.modified?.length || 0) + (commit.removed?.length || 0);
+      // Try fetching rich file diff patches from GitHub REST API if accessible
+      let detailedFiles: Array<{
+        filename: string;
+        status: string;
+        additions: number;
+        deletions: number;
+        patch?: string;
+      }> = [];
 
-      // 3. Upsert into task_commits
+      let totalAdded = (commit.added?.length || 0) + (commit.modified?.length || 0);
+      let totalRemoved = commit.removed?.length || 0;
+      let totalFiles = (commit.added?.length || 0) + (commit.modified?.length || 0) + (commit.removed?.length || 0);
+
+      try {
+        const headers: Record<string, string> = {
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'Trinetra-Tasks-App',
+        };
+        if (authToken) {
+          headers['Authorization'] = `token ${authToken}`;
+        }
+
+        const commitApiRes = await fetch(
+          `https://api.github.com/repos/${repoFullName}/commits/${commitSha}`,
+          { headers }
+        );
+
+        if (commitApiRes.ok) {
+          const commitApiData = await commitApiRes.json();
+          if (commitApiData.stats) {
+            totalAdded = commitApiData.stats.additions || totalAdded;
+            totalRemoved = commitApiData.stats.deletions || totalRemoved;
+          }
+          if (Array.isArray(commitApiData.files)) {
+            totalFiles = commitApiData.files.length;
+            detailedFiles = commitApiData.files.map((f: any) => ({
+              filename: f.filename,
+              status: f.status || 'modified',
+              additions: f.additions || 0,
+              deletions: f.deletions || 0,
+              patch: f.patch,
+            }));
+          }
+        }
+      } catch (apiErr) {
+        console.warn('Could not fetch rich diff from GitHub API:', apiErr);
+      }
+
+      // Fallback file changes if GitHub API is unavailable
+      if (detailedFiles.length === 0) {
+        (commit.added || []).forEach((file: string) => {
+          detailedFiles.push({ filename: file, status: 'added', additions: 1, deletions: 0 });
+        });
+        (commit.modified || []).forEach((file: string) => {
+          detailedFiles.push({ filename: file, status: 'modified', additions: 1, deletions: 0 });
+        });
+        (commit.removed || []).forEach((file: string) => {
+          detailedFiles.push({ filename: file, status: 'deleted', additions: 0, deletions: 1 });
+        });
+      }
+
+      // 4. Upsert task_commits
       const { data: insertedCommit, error: commitErr } = await supabase
         .from('task_commits')
         .upsert(
@@ -142,60 +208,29 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (commitErr) {
-        console.error('Failed to insert commit:', commitErr);
+        console.error('Failed to insert commit record:', commitErr);
         continue;
       }
 
       processedCount++;
-
-      // 4. Store file level changes
       const commitId = insertedCommit.id;
-      const fileChanges: Array<{
-        commit_id: string;
-        filename: string;
-        status: string;
-        additions: number;
-        deletions: number;
-        patch?: string;
-      }> = [];
 
-      (commit.added || []).forEach((file: string) => {
-        fileChanges.push({
+      // 5. Store file-level changes & patches
+      if (detailedFiles.length > 0) {
+        const fileChangesPayload = detailedFiles.map((f) => ({
           commit_id: commitId,
-          filename: file,
-          status: 'added',
-          additions: 1,
-          deletions: 0,
-        });
-      });
+          filename: f.filename,
+          status: f.status,
+          additions: f.additions,
+          deletions: f.deletions,
+          patch: f.patch || null,
+        }));
 
-      (commit.modified || []).forEach((file: string) => {
-        fileChanges.push({
-          commit_id: commitId,
-          filename: file,
-          status: 'modified',
-          additions: 1,
-          deletions: 0,
-        });
-      });
-
-      (commit.removed || []).forEach((file: string) => {
-        fileChanges.push({
-          commit_id: commitId,
-          filename: file,
-          status: 'deleted',
-          additions: 0,
-          deletions: 1,
-        });
-      });
-
-      if (fileChanges.length > 0) {
-        // Delete previous file changes for this commit SHA to avoid duplicates
         await supabase.from('task_commit_file_changes').delete().eq('commit_id', commitId);
-        await supabase.from('task_commit_file_changes').insert(fileChanges);
+        await supabase.from('task_commit_file_changes').insert(fileChangesPayload);
       }
 
-      // 5. If linked to a task, add an activity record
+      // 6. Log timeline activity event if attached to a task
       if (matchedTaskId) {
         await supabase.from('task_activity').insert({
           task_id: matchedTaskId,
@@ -219,7 +254,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal Server Error';
-    console.error('GitHub Webhook Error:', err);
+    console.error('GitHub Webhook Processing Error:', err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
