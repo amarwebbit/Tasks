@@ -118,14 +118,32 @@ export default function TaskCodeChangesTab({
           <p className="text-xs text-slate-400 max-w-md mx-auto">
             When teammates push code with this task key (e.g. commit message containing task ID) or manually link their pushes, code diff logs will appear here side-by-side.
           </p>
-          {onLinkPushedCodeClick && (
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
             <button
-              onClick={onLinkPushedCodeClick}
-              className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-medium inline-flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition"
+              onClick={async () => {
+                try {
+                  setLoading(true);
+                  const res = await fetch(`/api/projects/${projectId}/github/sync-commits`, { method: 'POST' });
+                  await fetchCommits();
+                } catch (err) {
+                  console.error('Failed syncing commits:', err);
+                  setLoading(false);
+                }
+              }}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium inline-flex items-center gap-2 border border-slate-700 transition"
             >
-              <GitCommit className="w-4 h-4" /> Link Unlinked Pushes
+              <RefreshCw className="w-3.5 h-3.5 text-indigo-400" /> Sync Commits from GitHub
             </button>
-          )}
+
+            {onLinkPushedCodeClick && (
+              <button
+                onClick={onLinkPushedCodeClick}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-medium inline-flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition"
+              >
+                <GitCommit className="w-4 h-4" /> Link Unlinked Pushes
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="space-y-4">

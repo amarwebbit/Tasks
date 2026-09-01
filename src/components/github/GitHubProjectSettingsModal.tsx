@@ -34,6 +34,7 @@ interface GitHubRepo {
 interface GitHubProjectSettingsModalProps {
   projectId: string;
   projectName: string;
+  projectKey?: string;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -41,6 +42,7 @@ interface GitHubProjectSettingsModalProps {
 export default function GitHubProjectSettingsModal({
   projectId,
   projectName,
+  projectKey = '',
   isOpen,
   onClose,
 }: GitHubProjectSettingsModalProps) {
@@ -275,27 +277,53 @@ export default function GitHubProjectSettingsModal({
 
           {/* Connected Active Card */}
           {connected && (
-            <div className="p-4 bg-emerald-950/30 border border-emerald-500/30 rounded-xl flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                  <CheckCircle2 className="w-5 h-5" />
+            <div className="p-4 bg-emerald-950/30 border border-emerald-500/30 rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                      Connected to <code className="text-emerald-300 bg-slate-900 px-2 py-0.5 rounded font-mono">{repoFullName}</code>
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Webhooks active • Commits automatically logged on push
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                    Connected to <code className="text-emerald-300 bg-slate-900 px-2 py-0.5 rounded font-mono">{repoFullName}</code>
-                  </h4>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Webhooks active • Commits automatically logged on push
-                  </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        setSaving(true);
+                        setError(null);
+                        const res = await fetch(`/api/projects/${projectId}/github/sync-commits`, { method: 'POST' });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Failed to sync commits');
+                        setSuccessMsg(`Imported ${data.synced_count || 0} past commit(s) from GitHub!`);
+                      } catch (err: any) {
+                        setError(err.message || 'Sync failed');
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                    disabled={saving}
+                    className="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-lg text-xs font-medium flex items-center gap-1.5 transition"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${saving ? 'animate-spin' : ''}`} />
+                    <span>{saving ? 'Syncing...' : 'Sync Past Commits'}</span>
+                  </button>
+                  <button
+                    onClick={handleDisconnect}
+                    disabled={saving}
+                    className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg text-xs font-medium flex items-center gap-1.5 transition"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Disconnect
+                  </button>
                 </div>
               </div>
-              <button
-                onClick={handleDisconnect}
-                disabled={saving}
-                className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg text-xs font-medium flex items-center gap-1.5 transition"
-              >
-                <Trash2 className="w-3.5 h-3.5" /> Disconnect
-              </button>
             </div>
           )}
 
@@ -354,7 +382,7 @@ export default function GitHubProjectSettingsModal({
                   </div>
 
                   <a
-                    href={`/api/github/oauth/connect?projectId=${projectId}`}
+                    href={`/api/github/oauth/connect?projectId=${projectId}&projectKey=${projectKey}`}
                     className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs rounded-xl shadow-lg shadow-indigo-600/20 transition"
                   >
                     <Sparkles className="w-4 h-4" /> Authorize GitHub Account (1-Click)
