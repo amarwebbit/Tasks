@@ -28,6 +28,9 @@ import {
   Trash2,
 } from 'lucide-react';
 import { TaskComment } from '@/types/database';
+import TaskCodeChangesTab from '@/components/github/TaskCodeChangesTab';
+import LinkPushedCodeModal from '@/components/github/LinkPushedCodeModal';
+import { GitBranch, Code2 } from 'lucide-react';
 
 export default function TaskDetailPage() {
   const params = useParams();
@@ -68,6 +71,8 @@ export default function TaskDetailPage() {
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [isDeletingTask, setIsDeletingTask] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isLinkPushedCodeOpen, setIsLinkPushedCodeOpen] = useState(false);
+  const [taskCommitsRefreshKey, setTaskCommitsRefreshKey] = useState(0);
 
   const project = projects.find(p => p.project_key === projectKey);
   const task = tasks.find(
@@ -450,6 +455,25 @@ export default function TaskDetailPage() {
               )}
             </div>
 
+            {/* Code Changes & Diff Logs Section */}
+            <div className="bg-white border border-[#E8E2D5] rounded-xl p-6 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Code2 className="w-4 h-4 text-purple-900" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-stone-800">
+                    GitHub Code Changes & Side-by-Side Diffs
+                  </h3>
+                </div>
+              </div>
+
+              <TaskCodeChangesTab
+                key={taskCommitsRefreshKey}
+                taskId={task.id}
+                projectId={project.id}
+                onLinkPushedCodeClick={() => setIsLinkPushedCodeOpen(true)}
+              />
+            </div>
+
             {/* Attachments Section */}
             <div className="bg-white border border-[#E8E2D5] rounded-xl p-6 shadow-2xs space-y-4">
               <div className="flex items-center justify-between">
@@ -783,6 +807,15 @@ export default function TaskDetailPage() {
           </div>
         </div>
       )}
+
+      {/* MODAL: LINK PUSHED CODE */}
+      <LinkPushedCodeModal
+        taskId={task.id}
+        projectId={project.id}
+        isOpen={isLinkPushedCodeOpen}
+        onClose={() => setIsLinkPushedCodeOpen(false)}
+        onSuccess={() => setTaskCommitsRefreshKey((k) => k + 1)}
+      />
     </div>
   );
 }

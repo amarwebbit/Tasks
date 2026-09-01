@@ -39,6 +39,7 @@ export interface UserProfile {
   role?: 'ADMIN' | 'USER';
   plan?: 'FREE' | 'PRO';
   plan_expires_at?: string | null;
+  github_username?: string;
   created_at: string;
 }
 
@@ -235,3 +236,48 @@ export interface AdminUserStats {
   project_names: string[];
   team_members_count: number;
 }
+
+export interface ProjectGitHubSettings {
+  id: string;
+  project_id: string;
+  repo_full_name: string;
+  webhook_secret: string;
+  github_token?: string | null;
+  default_branch: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TaskCommit {
+  id: string;
+  task_id?: string | null;
+  project_id: string;
+  user_id?: string | null;
+  commit_sha: string;
+  branch?: string;
+  commit_message: string;
+  author_github_username?: string;
+  author_email?: string;
+  commit_url?: string;
+  total_additions: number;
+  total_deletions: number;
+  files_count: number;
+  pushed_at: string;
+  created_at: string;
+  file_changes?: TaskCommitFileChange[];
+  author?: UserProfile;
+}
+
+export interface TaskCommitFileChange {
+  id: string;
+  commit_id: string;
+  filename: string;
+  status: 'added' | 'modified' | 'deleted' | 'renamed';
+  additions: number;
+  deletions: number;
+  patch?: string;
+  previous_filename?: string;
+  created_at: string;
+}
+

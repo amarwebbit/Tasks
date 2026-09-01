@@ -35,6 +35,8 @@ import {
 } from 'lucide-react';
 import { AssignmentRule, ProjectRole } from '@/types/database';
 import { PaywallModal } from '@/components/PaywallModal';
+import GitHubProjectSettingsModal from '@/components/github/GitHubProjectSettingsModal';
+import { GitBranch } from 'lucide-react';
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -68,6 +70,7 @@ export default function ProjectDetailPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [isDeletingProject, setIsDeletingProject] = useState(false);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
+  const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
 
   const project = projects.find(p => p.project_key === projectKey);
 
@@ -212,6 +215,14 @@ export default function ProjectDetailPage() {
           </nav>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsGitHubModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-900 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer"
+            >
+              <GitBranch className="w-3.5 h-3.5 text-indigo-600" />
+              <span>GitHub Setup</span>
+            </button>
+
             <button
               onClick={() => handleDownloadReport('QUICK')}
               disabled={isExporting}
@@ -958,6 +969,13 @@ export default function ProjectDetailPage() {
         title="Upgrade to Trinetra Pro"
         subtitle="Free tier allows 1 project and 2 members. Upgrade to Pro for unlimited team collaboration and complete 7-sheet Excel audit workbooks."
         highlightedFeature="REPORTS"
+      />
+
+      <GitHubProjectSettingsModal
+        projectId={project.id}
+        projectName={project.name}
+        isOpen={isGitHubModalOpen}
+        onClose={() => setIsGitHubModalOpen(false)}
       />
     </div>
   );
