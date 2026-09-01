@@ -1,8 +1,11 @@
 import 'server-only';
 import { Resend } from 'resend';
+import { createClient } from '@supabase/supabase-js';
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resendFromEmail = process.env.RESEND_FROM_EMAIL || 'Trinetra Tasks <notifications@resend.dev>';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 const resend = resendApiKey && resendApiKey.startsWith('re_') ? new Resend(resendApiKey) : null;
 
@@ -24,24 +27,53 @@ export async function sendEmailNotification({
   emailType,
 }: SendEmailParams): Promise<{ success: boolean; id?: string; error?: string }> {
   try {
-    if (!resend) {
+    let emailId = `log-${Date.now()}`;
+    let isError = false;
+    let errorMsg: string | undefined;
+
+    if (resend) {
+      const { data, error } = await resend.emails.send({
+        from: resendFromEmail,
+        to,
+        subject,
+        html,
+      });
+
+      if (error) {
+        console.error('Resend Error:', error);
+        isError = true;
+        errorMsg = error.message;
+      } else {
+        emailId = data?.id || emailId;
+      }
+    } else {
       console.log(`[Server Email Log (${emailType})] to: ${to} | Subject: "${subject}"`);
-      return { success: true, id: `mock-email-${Date.now()}` };
     }
 
-    const { data, error } = await resend.emails.send({
-      from: resendFromEmail,
-      to,
-      subject,
-      html,
-    });
-
-    if (error) {
-      console.error('Resend Error:', error);
-      return { success: false, error: error.message };
+    // Persist dispatch record in email_events table
+    try {
+      if (supabaseUrl && serviceRoleKey) {
+        const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
+        await supabase.from('email_events').insert({
+          task_id: taskId || null,
+          project_id: projectId || null,
+          recipient_email: to,
+          email_type: emailType,
+          subject: subject,
+          status: isError ? 'FAILED' : 'SENT',
+          resend_id: emailId,
+          sent_at: new Date().toISOString(),
+        });
+      }
+    } catch (dbErr) {
+      console.warn('Could not log email event to database:', dbErr);
     }
 
-    return { success: true, id: data?.id };
+    if (isError) {
+      return { success: false, error: errorMsg };
+    }
+
+    return { success: true, id: emailId };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown email sending error';
     console.error('Email Dispatch Exception:', message);

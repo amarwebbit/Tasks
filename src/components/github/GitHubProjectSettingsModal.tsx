@@ -324,6 +324,60 @@ export default function GitHubProjectSettingsModal({
                   </button>
                 </div>
               </div>
+
+              {/* Webhook Configuration Summary & Credentials */}
+              <div className="pt-3 border-t border-emerald-500/20 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-300 font-medium flex items-center gap-1.5">
+                    <Link2 className="w-3.5 h-3.5 text-emerald-400" /> Active Webhook Endpoint Details:
+                  </span>
+                  <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-mono">
+                    Content type: application/json
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+                  <div>
+                    <span className="text-slate-400 text-[11px] block mb-1">Payload URL:</span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        readOnly
+                        value={webhookUrl}
+                        className="w-full px-2.5 py-1 bg-slate-900 border border-slate-800 rounded text-slate-200 font-mono text-[11px]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(webhookUrl, 'url')}
+                        className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded text-[11px] flex items-center gap-1 transition shrink-0"
+                      >
+                        {copiedUrl ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-400 text-[11px] block mb-1">Webhook Secret Key:</span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        readOnly
+                        value={webhookSecret || 'Default Configured Secret'}
+                        className="w-full px-2.5 py-1 bg-slate-900 border border-slate-800 rounded text-slate-200 font-mono text-[11px]"
+                      />
+                      {webhookSecret && (
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(webhookSecret, 'secret')}
+                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded text-[11px] flex items-center gap-1 transition shrink-0"
+                        >
+                          {copiedSecret ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

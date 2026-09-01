@@ -11,6 +11,7 @@ function formatAppUrl(urlStr: string): string {
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const projectId = searchParams.get('projectId') || '';
+  const projectKey = searchParams.get('projectKey') || '';
   const redirectPath = searchParams.get('redirectPath') || '';
 
   const clientId = process.env.GITHUB_CLIENT_ID;
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
   const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
   const appUrl = formatAppUrl(rawAppUrl);
 
-  const state = JSON.stringify({ projectId, redirectPath });
+  const state = JSON.stringify({ projectId, projectKey, redirectPath });
 
   // If a GitHub App slug is configured, redirect to GitHub App installation flow for granular repo isolation
   if (appName) {

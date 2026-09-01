@@ -284,13 +284,12 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
               ].map(opt => (
                 <label
                   key={opt.rule}
-                  className={`flex items-start gap-3 p-3 rounded-lg border text-xs cursor-pointer transition-all ${
-                    isLimitReached
-                      ? 'opacity-60 cursor-not-allowed bg-stone-50 border-stone-200'
-                      : assignmentRule === opt.rule
+                  className={`flex items-start gap-3 p-3 rounded-lg border text-xs cursor-pointer transition-all ${isLimitReached
+                    ? 'opacity-60 cursor-not-allowed bg-stone-50 border-stone-200'
+                    : assignmentRule === opt.rule
                       ? 'border-purple-900 bg-purple-50/50 text-purple-950 font-medium'
                       : 'border-stone-200 bg-white hover:border-stone-300'
-                  }`}
+                    }`}
                 >
                   <input
                     type="radio"

@@ -26,10 +26,14 @@ import {
   ShieldCheck,
   AlertTriangle,
   Trash2,
+  Copy,
+  Check,
+  GitCommit,
 } from 'lucide-react';
 import { TaskComment } from '@/types/database';
 import TaskCodeChangesTab from '@/components/github/TaskCodeChangesTab';
 import LinkPushedCodeModal from '@/components/github/LinkPushedCodeModal';
+import GitHubProjectSettingsModal from '@/components/github/GitHubProjectSettingsModal';
 import { GitBranch, Code2 } from 'lucide-react';
 
 export default function TaskDetailPage() {
@@ -72,6 +76,8 @@ export default function TaskDetailPage() {
   const [isDeletingTask, setIsDeletingTask] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isLinkPushedCodeOpen, setIsLinkPushedCodeOpen] = useState(false);
+  const [isGitHubSettingsOpen, setIsGitHubSettingsOpen] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
   const [taskCommitsRefreshKey, setTaskCommitsRefreshKey] = useState(0);
 
   const project = projects.find(p => p.project_key === projectKey);
@@ -174,7 +180,22 @@ export default function TaskDetailPage() {
             <ArrowLeft className="w-4 h-4" />
             <span>Back to {project.name}</span>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                const commitMsgKey = `${projectKey}-${task.task_number}`;
+                navigator.clipboard.writeText(commitMsgKey);
+                setCopiedKey(true);
+                setTimeout(() => setCopiedKey(false), 2000);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-purple-100/80 hover:bg-purple-200/80 text-purple-950 border border-purple-300/60 shadow-2xs transition-all cursor-pointer"
+              title="Copy task key for git commit message"
+            >
+              {copiedKey ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <GitCommit className="w-3.5 h-3.5 text-purple-900" />}
+              <span>{copiedKey ? 'Copied Key!' : `Copy Git Key (${projectKey}-${task.task_number})`}</span>
+            </button>
+
             <span className="hidden sm:inline text-xs text-stone-400 font-mono">
               ID: {task.id}
             </span>
@@ -471,6 +492,7 @@ export default function TaskDetailPage() {
                 taskId={task.id}
                 projectId={project.id}
                 onLinkPushedCodeClick={() => setIsLinkPushedCodeOpen(true)}
+                onOpenGitHubSettings={() => setIsGitHubSettingsOpen(true)}
               />
             </div>
 
@@ -815,6 +837,15 @@ export default function TaskDetailPage() {
         isOpen={isLinkPushedCodeOpen}
         onClose={() => setIsLinkPushedCodeOpen(false)}
         onSuccess={() => setTaskCommitsRefreshKey((k) => k + 1)}
+      />
+
+      {/* MODAL: GITHUB SETTINGS */}
+      <GitHubProjectSettingsModal
+        projectId={project.id}
+        projectName={project.name}
+        projectKey={project.project_key}
+        isOpen={isGitHubSettingsOpen}
+        onClose={() => setIsGitHubSettingsOpen(false)}
       />
     </div>
   );

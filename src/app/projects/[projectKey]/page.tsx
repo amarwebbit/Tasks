@@ -100,6 +100,15 @@ export default function ProjectDetailPage() {
   const projectLeader = users.find(u => u.id === project.team_leader_id);
   const isThisProjectPro = isPro || projectLeader?.plan === 'PRO';
 
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('github_connected') === 'true') {
+        setIsGitHubModalOpen(true);
+      }
+    }
+  }, []);
+
   // Filtered tasks for the Tasks list tab
   const filteredTasks = projectTasks.filter(t => {
     if (statusFilter !== 'ALL' && t.status !== statusFilter) return false;
@@ -974,6 +983,7 @@ export default function ProjectDetailPage() {
       <GitHubProjectSettingsModal
         projectId={project.id}
         projectName={project.name}
+        projectKey={project.project_key}
         isOpen={isGitHubModalOpen}
         onClose={() => setIsGitHubModalOpen(false)}
       />
