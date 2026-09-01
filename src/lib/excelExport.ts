@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { Task, TaskActivity, TaskComment, TaskAttachment, ProjectMember, EmailEvent, Project } from '@/types/database';
+import { Task, TaskActivity, TaskComment, TaskAttachment, ProjectMember, EmailEvent, Project, TaskCommit } from '@/types/database';
 
 export interface ReportFilterOptions {
   projectId?: string;
@@ -21,6 +21,7 @@ export async function generateExcelWorkbook({
   attachments,
   members,
   emailLogs = [],
+  commits = [],
   filters,
 }: {
   type: 'QUICK' | 'COMPLETE';
@@ -31,6 +32,7 @@ export async function generateExcelWorkbook({
   attachments: TaskAttachment[];
   members: ProjectMember[];
   emailLogs?: EmailEvent[];
+  commits?: TaskCommit[];
   filters?: ReportFilterOptions;
 }): Promise<ExcelJS.Workbook> {
   const workbook = new ExcelJS.Workbook();
@@ -314,6 +316,52 @@ export async function generateExcelWorkbook({
   sheet7.getRow(1).fill = headerFill;
   sheet7.getRow(1).font = headerFont;
   sheet7.getRow(1).height = 24;
+
+  // Sheet 8: Code Commits & Diffs
+  const sheet8 = workbook.addWorksheet('8 - Code Commits & Diffs');
+  sheet8.columns = [
+    { header: 'Task ID', key: 'task_id', width: 14 },
+    { header: 'Commit SHA', key: 'commit_sha', width: 16 },
+    { header: 'Branch', key: 'branch', width: 16 },
+    { header: 'Author', key: 'author', width: 22 },
+    { header: 'Commit Message', key: 'message', width: 40 },
+    { header: 'Files Changed', key: 'files_count', width: 14 },
+    { header: 'Lines Added (+)', key: 'additions', width: 15 },
+    { header: 'Lines Deleted (-)', key: 'deletions', width: 15 },
+    { header: 'Pushed At', key: 'pushed_at', width: 22 },
+  ];
+
+  if (commits.length === 0) {
+    sheet8.addRow({
+      task_id: 'N/A',
+      commit_sha: 'No commits logged',
+      branch: '-',
+      author: '-',
+      message: 'No GitHub commits linked to selected tasks yet.',
+      files_count: 0,
+      additions: 0,
+      deletions: 0,
+      pushed_at: '-',
+    });
+  } else {
+    commits.forEach(c => {
+      const task = tasks.find(t => t.id === c.task_id);
+      sheet8.addRow({
+        task_id: task ? `${task.project?.project_key || 'TRI'}-${task.task_number}` : 'Unlinked',
+        commit_sha: c.commit_sha.substring(0, 7),
+        branch: c.branch || 'main',
+        author: c.author_github_username || c.author_email || 'Teammate',
+        message: c.commit_message,
+        files_count: c.files_count || 0,
+        additions: c.total_additions || 0,
+        deletions: c.total_deletions || 0,
+        pushed_at: new Date(c.pushed_at).toLocaleString(),
+      });
+    });
+  }
+  sheet8.getRow(1).fill = headerFill;
+  sheet8.getRow(1).font = headerFont;
+  sheet8.getRow(1).height = 24;
 
   return workbook;
 }

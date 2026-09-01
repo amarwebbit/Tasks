@@ -178,6 +178,17 @@ export async function POST(req: NextRequest) {
       emailLogs = emailData || [];
     }
 
+    // Fetch Code Commits & Diffs for Project
+    let commits: any[] = [];
+    if (projectId && projectId !== 'ALL') {
+      const { data: commitData } = await supabase
+        .from('task_commits')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('pushed_at', { ascending: false });
+      commits = commitData || [];
+    }
+
     const workbook = await generateExcelWorkbook({
       type: type === 'QUICK' ? 'QUICK' : 'COMPLETE',
       project: targetProject,
@@ -187,6 +198,7 @@ export async function POST(req: NextRequest) {
       attachments,
       members,
       emailLogs,
+      commits,
       filters: body,
     });
 
