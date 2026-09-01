@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTrinetra } from '@/lib/store';
 import { AssignmentRule } from '@/types/database';
-import { X, FolderPlus, AlertCircle, CheckCircle2, Lock, Sparkles } from 'lucide-react';
+import { X, FolderPlus, AlertCircle, CheckCircle2, Lock, Sparkles, GitBranch, Link2 } from 'lucide-react';
 import { PaywallModal } from './PaywallModal';
 
 interface CreateProjectModalProps {
@@ -19,6 +19,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
   const [assignmentRule, setAssignmentRule] = useState<AssignmentRule>('LEADER_ONLY');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [targetDate, setTargetDate] = useState('');
+  const [enableGithub, setEnableGithub] = useState(false);
+  const [githubRepo, setGithubRepo] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -91,6 +93,21 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
         return;
       }
 
+      // If user enabled GitHub integration and entered a repository name, link it now
+      if (enableGithub && githubRepo.trim() && res.project?.id) {
+        try {
+          await fetch(`/api/projects/${res.project.id}/github`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              repo_full_name: githubRepo.trim(),
+            }),
+          });
+        } catch (ghErr) {
+          console.error('Failed auto-linking GitHub repo on project creation:', ghErr);
+        }
+      }
+
       setIsSuccess(true);
       setTimeout(() => {
         setIsSuccess(false);
@@ -98,6 +115,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
         setName('');
         setProjectKey('');
         setDescription('');
+        setEnableGithub(false);
+        setGithubRepo('');
         onClose();
       }, 800);
     } catch (err: unknown) {
@@ -317,6 +336,49 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                 className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800 disabled:bg-stone-100 disabled:cursor-not-allowed"
               />
             </div>
+          </div>
+
+          {/* GitHub Integration (Optional) */}
+          <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  disabled={isLimitReached}
+                  checked={enableGithub}
+                  onChange={(e) => setEnableGithub(e.target.checked)}
+                  className="rounded text-purple-900 focus:ring-purple-800"
+                />
+                <span className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                  <GitBranch className="w-3.5 h-3.5 text-purple-900" />
+                  Link GitHub Repository (Optional)
+                </span>
+              </label>
+              <span className="text-[10px] text-purple-900 font-semibold bg-purple-100 px-2 py-0.5 rounded-full">
+                Auto-Commit Tracking
+              </span>
+            </div>
+
+            {enableGithub && (
+              <div className="space-y-1.5 pt-1 animate-in fade-in duration-150">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
+                    <Link2 className="w-3.5 h-3.5" />
+                  </div>
+                  <input
+                    type="text"
+                    disabled={isLimitReached}
+                    value={githubRepo}
+                    onChange={(e) => setGithubRepo(e.target.value)}
+                    placeholder="e.g. username/repository-name or org/repo"
+                    className="w-full pl-8 pr-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs text-stone-900 focus:outline-none focus:border-purple-800"
+                  />
+                </div>
+                <p className="text-[11px] text-stone-500">
+                  Teammate code pushes to this repository will be logged side-by-side with task details.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Actions */}
