@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTrinetra } from '@/lib/store';
 import { useUi } from '@/lib/ui-context';
@@ -11,6 +11,7 @@ import {
   Sparkles,
   LayoutDashboard,
   FolderPlus,
+  GitBranch,
   Users,
   CheckSquare,
   ListTodo,
@@ -36,127 +37,129 @@ interface TourStep {
   requiresSidebar?: boolean;
 }
 
-const TOUR_STEPS: TourStep[] = [
-  {
-    id: 'command-center',
-    selector: '[data-tour="command-center-metrics"]',
-    path: '/',
-    badge: 'Step 1 of 8 • Home Screen',
-    title: 'Home Overview',
-    icon: LayoutDashboard,
-    accentColor: 'text-purple-900 bg-purple-100',
-    whatIsThis:
-      'This is your main home screen. It shows you a simple summary of everything happening right now—how many projects you have, how many tasks your team is working on, and how much work is finished.',
-    howToUse:
-      'Look at these cards whenever you log in. They help you see how fast work is getting done and quickly spot if any work is stuck or running late.',
-    preferredPosition: 'bottom',
-  },
-  {
-    id: 'create-project',
-    selector: '[data-tour="sidebar-create-project"]',
-    path: '/',
-    badge: 'Step 2 of 8 • Projects',
-    title: 'Projects & Task Numbers',
-    icon: FolderPlus,
-    accentColor: 'text-amber-900 bg-amber-100',
-    whatIsThis:
-      'Projects help you keep different types of work separated (like Marketing, Mobile App, or Website). Every project gets a short code (like TRI or APP), and every task automatically gets a simple number like TRI-1, TRI-2 so nothing gets mixed up or lost.',
-    howToUse:
-      'Click the "+" button right here to start a new project, choose who is in charge as the Team Leader, and decide who is allowed to give tasks to teammates.',
-    preferredPosition: 'right',
-    requiresSidebar: true,
-  },
-  {
-    id: 'team-directory',
-    selector: '[data-tour="team-header"]',
-    path: '/team',
-    badge: 'Step 3 of 8 • Team',
-    title: 'Team Members & Roles',
-    icon: Users,
-    accentColor: 'text-indigo-900 bg-indigo-100',
-    whatIsThis:
-      'This is where you see all your teammates and what they can do. You can easily let someone lead and assign tasks in one project, while keeping them as a normal member in another project.',
-    howToUse:
-      'Go here to invite new people to your team by entering their email, and see how many tasks each person has so work is shared fairly.',
-    preferredPosition: 'bottom',
-  },
-  {
-    id: 'my-tasks',
-    selector: '[data-tour="my-tasks-header"]',
-    path: '/my-tasks',
-    badge: 'Step 4 of 8 • Your Work',
-    title: 'My Tasks (Your To-Do List)',
-    icon: CheckSquare,
-    accentColor: 'text-emerald-900 bg-emerald-100',
-    whatIsThis:
-      'This is your personal to-do list. Every single task given to you from any project shows up right here in one easy-to-read place.',
-    howToUse:
-      'Use the filter at the top to see tasks by status. Click any task to read the instructions, let your leader know you started working, or ask for help if you are stuck.',
-    preferredPosition: 'bottom',
-  },
-  {
-    id: 'task-workflow',
-    selector: '[data-tour="my-tasks-header"]',
-    path: '/my-tasks',
-    badge: 'Step 5 of 8 • Task Steps',
-    title: 'How Tasks Move from Start to Finish',
-    icon: ListTodo,
-    accentColor: 'text-teal-900 bg-teal-100',
-    whatIsThis:
-      'Every task moves through 6 simple steps so work never gets lost: 1. Draft (writing the task), 2. Assigned (given to someone), 3. In Progress (working on it), 4. Blocked (stuck and need help), 5. Submitted (sent to be checked), and 6. Approved (checked and finished!).',
-    howToUse:
-      'When you finish your work, click "Submit" and add a short note or file to show what you did. A task is only complete when your leader checks it and clicks "Approve".',
-    preferredPosition: 'bottom',
-  },
-  {
-    id: 'assigned-by-me',
-    selector: '[data-tour="assigned-by-me-header"]',
-    path: '/assigned-by-me',
-    badge: 'Step 6 of 8 • Reviewing Work',
-    title: 'Assigned By Me (Checking Work)',
-    icon: Send,
-    accentColor: 'text-blue-900 bg-blue-100',
-    whatIsThis:
-      'If you give tasks to other teammates, this is where you keep an eye on them. You can easily see who is working on what without having to message them for updates.',
-    howToUse:
-      'When a teammate finishes work, it will appear here for you to check. Read their note and proof. If it looks great, click "Approve". If they need to fix something, click "Request Revisions" and tell them what to change.',
-    preferredPosition: 'bottom',
-  },
-  {
-    id: 'notifications',
-    selector: '[data-tour="notifications-header"]',
-    path: '/notifications',
-    badge: 'Step 7 of 8 • Alerts',
-    title: 'Notifications & Email Updates',
-    icon: Bell,
-    accentColor: 'text-amber-900 bg-amber-100',
-    whatIsThis:
-      'You never have to wonder what is happening. Whenever someone gives you a task, asks you for help, or approves your work, you will see an alert here and get an email in your inbox.',
-    howToUse:
-      'Click any alert to open that task right away, read comments from teammates, or click "Mark All as Read" to clean up your list.',
-    preferredPosition: 'bottom',
-  },
-  {
-    id: 'reports-workbook',
-    selector: '[data-tour="reports-workbook-card"]',
-    path: '/reports',
-    badge: 'Step 8 of 8 • Excel Reports',
-    title: 'Download Full Excel Reports (8 Sheets)',
-    icon: FileSpreadsheet,
-    accentColor: 'text-purple-900 bg-purple-100',
-    whatIsThis:
-      'Need to show your work to your boss, client, or team? Trinetra can turn your entire project into a clean, ready-to-open Excel spreadsheet with 8 neatly organized sheets.',
-    howToUse:
-      'Select your project and click "Download Complete Workbook". You get 8 clear sheets: Overview Summary, Task List, Work History, Comments, Team Workload, Uploaded Files, Email History, and Code Commits.',
-    preferredPosition: 'top',
-  },
-];
-
 export const FeatureTourGuide: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
-  const { currentUser } = useTrinetra();
+  const { currentUser, projects } = useTrinetra();
   const { isTutorialOpen, openTutorial, closeTutorial, openSidebar, closeSidebar } = useUi();
+
+  const firstProjectKey = projects[0]?.project_key;
+
+  const TOUR_STEPS: TourStep[] = [
+    {
+      id: 'command-center',
+      selector: '[data-tour="command-center-metrics"]',
+      path: '/',
+      badge: 'Step 1 of 8 • Home Screen',
+      title: 'Home Overview',
+      icon: LayoutDashboard,
+      accentColor: 'text-purple-900 bg-purple-100',
+      whatIsThis:
+        'This is your main home screen. It shows you a simple summary of everything happening right now—how many projects you have, how many tasks your team is working on, and how much work is finished.',
+      howToUse:
+        'Look at these cards whenever you log in. They help you see how fast work is getting done and quickly spot if any work is stuck or running late.',
+      preferredPosition: 'bottom',
+    },
+    {
+      id: 'create-project',
+      selector: '[data-tour="sidebar-create-project"]',
+      path: '/',
+      badge: 'Step 2 of 8 • Projects',
+      title: 'Projects & Task Numbers',
+      icon: FolderPlus,
+      accentColor: 'text-amber-900 bg-amber-100',
+      whatIsThis:
+        'Projects help you keep different types of work separated (like Marketing, Mobile App, or Website). Every project gets a short code (like TRI or APP), and every task automatically gets a simple number like TRI-1, TRI-2 so nothing gets mixed up or lost.',
+      howToUse:
+        'Click the "+" button right here to start a new project, choose who is in charge as the Team Leader, and decide who is allowed to give tasks to teammates.',
+      preferredPosition: 'right',
+      requiresSidebar: true,
+    },
+    {
+      id: 'team-directory',
+      selector: '[data-tour="team-header"]',
+      path: '/team',
+      badge: 'Step 3 of 8 • Team',
+      title: 'Team Members & Roles',
+      icon: Users,
+      accentColor: 'text-indigo-900 bg-indigo-100',
+      whatIsThis:
+        'This is where you see all your teammates and what they can do. You can easily let someone lead and assign tasks in one project, while keeping them as a normal member in another project.',
+      howToUse:
+        'Go here to invite new people to your team by entering their email, and see how many tasks each person has so work is shared fairly.',
+      preferredPosition: 'bottom',
+    },
+    {
+      id: 'my-tasks',
+      selector: '[data-tour="my-tasks-header"]',
+      path: '/my-tasks',
+      badge: 'Step 4 of 8 • Your Work',
+      title: 'My Tasks (Your To-Do List)',
+      icon: CheckSquare,
+      accentColor: 'text-emerald-900 bg-emerald-100',
+      whatIsThis:
+        'This is your personal to-do list. Every single task given to you from any project shows up right here in one easy-to-read place.',
+      howToUse:
+        'Use the filter at the top to see tasks by status. Click any task to read the instructions, let your leader know you started working, or ask for help if you are stuck.',
+      preferredPosition: 'bottom',
+    },
+    {
+      id: 'task-workflow',
+      selector: '[data-tour="my-tasks-header"]',
+      path: '/my-tasks',
+      badge: 'Step 5 of 8 • Task Steps',
+      title: 'How Tasks Move from Start to Finish',
+      icon: ListTodo,
+      accentColor: 'text-teal-900 bg-teal-100',
+      whatIsThis:
+        'Every task moves through 6 simple steps so work never gets lost: 1. Draft (writing the task), 2. Assigned (given to someone), 3. In Progress (working on it), 4. Blocked (stuck and need help), 5. Submitted (sent to be checked), and 6. Approved (checked and finished!).',
+      howToUse:
+        'When you finish your work, click "Submit" and add a short note or file to show what you did. A task is only complete when your leader checks it and clicks "Approve".',
+      preferredPosition: 'bottom',
+    },
+    {
+      id: 'assigned-by-me',
+      selector: '[data-tour="assigned-by-me-header"]',
+      path: '/assigned-by-me',
+      badge: 'Step 6 of 8 • Reviewing Work',
+      title: 'Assigned By Me (Checking Work)',
+      icon: Send,
+      accentColor: 'text-blue-900 bg-blue-100',
+      whatIsThis:
+        'If you give tasks to other teammates, this is where you keep an eye on them. You can easily see who is working on what without having to message them for updates.',
+      howToUse:
+        'When a teammate finishes work, it will appear here for you to check. Read their note and proof. If it looks great, click "Approve". If they need to fix something, click "Request Revisions" and tell them what to change.',
+      preferredPosition: 'bottom',
+    },
+    {
+      id: 'notifications',
+      selector: '[data-tour="notifications-header"]',
+      path: '/notifications',
+      badge: 'Step 7 of 8 • Alerts',
+      title: 'Notifications & Email Updates',
+      icon: Bell,
+      accentColor: 'text-amber-900 bg-amber-100',
+      whatIsThis:
+        'You never have to wonder what is happening. Whenever someone gives you a task, asks you for help, or approves your work, you will see an alert here and get an email in your inbox.',
+      howToUse:
+        'Click any alert to open that task right away, read comments from teammates, or click "Mark All as Read" to clean up your list.',
+      preferredPosition: 'bottom',
+    },
+    {
+      id: 'reports-workbook',
+      selector: '[data-tour="reports-workbook-card"]',
+      path: '/reports',
+      badge: 'Step 8 of 8 • Excel Reports',
+      title: 'Download Full Excel Reports (8 Sheets)',
+      icon: FileSpreadsheet,
+      accentColor: 'text-purple-900 bg-purple-100',
+      whatIsThis:
+        'Need to show your work to your boss, client, or team? Trinetra can turn your entire project into a clean, ready-to-open Excel spreadsheet with 8 neatly organized sheets.',
+      howToUse:
+        'Select your project and click "Download Complete Workbook". You get 8 clear sheets: Overview Summary, Task List, Work History, Comments, Team Workload, Uploaded Files, Email History, and Code Commits.',
+      preferredPosition: 'top',
+    },
+  ];
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
@@ -314,7 +317,7 @@ export const FeatureTourGuide: React.FC = () => {
         handlePrev();
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        endTour(false);
+        endTour(true);
       }
     };
 
@@ -459,7 +462,7 @@ export const FeatureTourGuide: React.FC = () => {
           </div>
 
           <button
-            onClick={() => endTour(false)}
+            onClick={() => endTour(true)}
             className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer touch-manipulation"
             title="End Tour (Esc)"
           >

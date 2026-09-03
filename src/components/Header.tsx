@@ -51,6 +51,7 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, projectId }) =>
 
           {projectId && (
             <button
+              data-tour="project-bulk-upload-btn"
               onClick={() => setIsBulkUploadOpen(true)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-300 text-stone-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
             >
@@ -61,6 +62,7 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, projectId }) =>
           )}
 
           <button
+            data-tour="project-new-task-btn"
             onClick={() => setIsCreateTaskOpen(true)}
             className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#4A154B] hover:bg-[#3B0F3C] text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
           >

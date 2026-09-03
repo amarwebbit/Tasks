@@ -33,11 +33,13 @@ import {
   Lock,
   Sparkles,
   Loader2,
+  HelpCircle,
 } from 'lucide-react';
 import { AssignmentRule, ProjectRole } from '@/types/database';
 import { PaywallModal } from '@/components/PaywallModal';
 import GitHubProjectSettingsModal from '@/components/github/GitHubProjectSettingsModal';
 import { GitBranch } from 'lucide-react';
+import { ProjectTourGuide } from '@/components/ProjectTourGuide';
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -72,6 +74,7 @@ export default function ProjectDetailPage() {
   const [isDeletingProject, setIsDeletingProject] = useState(false);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
+  const [isProjectTourOpen, setIsProjectTourOpen] = useState(false);
 
   const project = projects.find(p => p.project_key === projectKey);
 
@@ -190,7 +193,7 @@ export default function ProjectDetailPage() {
       {/* Project Navigation Bar */}
       <div className="px-4 sm:px-8 border-b border-[#E8E2D5] bg-white sticky top-16 z-20 overflow-x-auto scrollbar-none">
         <div className="flex items-center justify-between min-w-max">
-          <nav className="flex space-x-1">
+          <nav data-tour="project-nav-tabs" className="flex space-x-1">
             {[
               { id: 'tasks', label: 'Tasks', icon: ListTodo, count: totalTasks },
               { id: 'board', label: 'Board', icon: LayoutGrid },
@@ -226,6 +229,7 @@ export default function ProjectDetailPage() {
 
           <div className="flex items-center gap-2">
             <button
+              data-tour="project-github-setup"
               onClick={() => setIsGitHubModalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-900 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer"
             >
@@ -234,12 +238,22 @@ export default function ProjectDetailPage() {
             </button>
 
             <button
+              data-tour="project-export-btn"
               onClick={() => handleDownloadReport('QUICK')}
               disabled={isExporting}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
             >
               {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
               <span>{isExporting ? 'Exporting...' : 'Export Excel'}</span>
+            </button>
+
+            <button
+              onClick={() => setIsProjectTourOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors cursor-pointer"
+              title="Open Project & GitHub Guide"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-purple-800" />
+              <span className="hidden md:inline">Project Guide</span>
             </button>
           </div>
         </div>
@@ -992,6 +1006,11 @@ export default function ProjectDetailPage() {
         projectKey={project.project_key}
         isOpen={isGitHubModalOpen}
         onClose={() => setIsGitHubModalOpen(false)}
+      />
+
+      <ProjectTourGuide
+        isOpen={isProjectTourOpen ? true : undefined}
+        onClose={() => setIsProjectTourOpen(false)}
       />
     </div>
   );
