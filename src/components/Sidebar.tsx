@@ -36,7 +36,7 @@ export const Sidebar: React.FC = () => {
     signOut,
   } = useTrinetra();
 
-  const { isSidebarOpen, closeSidebar, openTutorial } = useUi();
+  const { isSidebarOpen, closeSidebar, openTutorial, openSupportModal } = useUi();
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
@@ -284,9 +284,13 @@ export const Sidebar: React.FC = () => {
               Refund Policy
             </Link>
             <span>•</span>
-            <a href="mailto:support@trinetraedu-ai.com" className="hover:text-purple-900 transition-colors font-medium">
+            <button
+              type="button"
+              onClick={() => openSupportModal('Customer Support Request - Trinetra Tasks')}
+              className="hover:text-purple-900 transition-colors font-medium cursor-pointer"
+            >
               Support
-            </a>
+            </button>
           </div>
         </div>
       </aside>

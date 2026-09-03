@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
+import { useUi } from '@/lib/ui-context';
 import {
   HelpCircle,
   ChevronDown,
@@ -80,6 +81,7 @@ const faqs: FAQItem[] = [
 ];
 
 export default function FAQPage() {
+  const { openSupportModal } = useUi();
   const [openIndex, setOpenIndex] = useState<number | null>(0);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
@@ -179,13 +181,14 @@ export default function FAQPage() {
             <h3 className="text-sm font-bold text-stone-900">Still have questions?</h3>
             <p className="text-xs text-stone-500">Our support desk is ready to help your team succeed.</p>
           </div>
-          <a
-            href="mailto:support@trinetraedu-ai.com"
-            className="flex items-center gap-2 px-4 py-2 bg-purple-950 hover:bg-purple-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+          <button
+            type="button"
+            onClick={() => openSupportModal('Help & Support Inquiry - Trinetra Tasks FAQ')}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-950 hover:bg-purple-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
           >
             <Mail className="w-4 h-4" />
             <span>Contact Support</span>
-          </a>
+          </button>
         </div>
 
         <p className="text-center text-[11px] text-stone-400 pb-8">

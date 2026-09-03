@@ -177,9 +177,21 @@ export const ProjectTourGuide: React.FC<ProjectTourGuideProps> = ({
       attempts++;
       const el = document.querySelector(step.selector);
       if (el) {
-        updateTargetRect();
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         clearInterval(interval);
+
+        if (typeof window !== 'undefined' && window.innerWidth < 640) {
+          const rect = el.getBoundingClientRect();
+          // On mobile, if element is in lower half of screen, scroll toward end; otherwise scroll toward start
+          if (rect.top > window.innerHeight * 0.45) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          } else {
+            const scrollTarget = window.scrollY + rect.top - 70;
+            window.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
+          }
+        } else {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        setTimeout(updateTargetRect, 250);
       } else if (attempts >= maxAttempts) {
         clearInterval(interval);
       }
@@ -266,28 +278,28 @@ export const ProjectTourGuide: React.FC<ProjectTourGuideProps> = ({
   const margin = 12;
 
   if (isMobile) {
-    const isElementAtBottom =
-      targetRect &&
-      targetRect.bottom >
-        (typeof window !== 'undefined' ? window.innerHeight * 0.55 : 400);
+    const elementCenterY = targetRect ? targetRect.top + targetRect.height / 2 : window.innerHeight / 2;
+    const placeCardAtTop = targetRect && elementCenterY > window.innerHeight * 0.45;
 
-    if (isElementAtBottom) {
+    if (placeCardAtTop) {
       cardStyles = {
         position: 'fixed',
-        top: '12px',
-        left: '12px',
-        right: '12px',
-        maxWidth: 'calc(100vw - 24px)',
+        top: '8px',
+        left: '8px',
+        right: '8px',
+        maxWidth: 'calc(100vw - 16px)',
         margin: '0 auto',
+        zIndex: 75,
       };
     } else {
       cardStyles = {
         position: 'fixed',
-        bottom: '12px',
-        left: '12px',
-        right: '12px',
-        maxWidth: 'calc(100vw - 24px)',
+        bottom: '8px',
+        left: '8px',
+        right: '8px',
+        maxWidth: 'calc(100vw - 16px)',
         margin: '0 auto',
+        zIndex: 75,
       };
     }
   } else if (targetRect) {
@@ -348,11 +360,11 @@ export const ProjectTourGuide: React.FC<ProjectTourGuideProps> = ({
         <div
           style={{
             position: 'fixed',
-            top: targetRect.top - 6,
-            left: targetRect.left - 6,
-            width: targetRect.width + 12,
-            height: targetRect.height + 12,
-            borderRadius: '12px',
+            top: targetRect.top - 4,
+            left: targetRect.left - 4,
+            width: targetRect.width + 8,
+            height: targetRect.height + 8,
+            borderRadius: '10px',
             boxShadow: '0 0 0 9999px rgba(15, 10, 20, 0.65)',
             border: '2.5px solid #F59E0B',
             pointerEvents: 'none',
@@ -378,17 +390,17 @@ export const ProjectTourGuide: React.FC<ProjectTourGuideProps> = ({
         </div>
 
         {/* Card Header */}
-        <div className="p-3.5 sm:p-4 bg-linear-to-r from-purple-950 via-[#4A154B] to-purple-900 text-white flex items-center justify-between select-none">
+        <div className="p-2.5 sm:p-4 bg-linear-to-r from-purple-950 via-[#4A154B] to-purple-900 text-white flex items-center justify-between select-none">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/10 text-amber-300 font-bold text-[10px] tracking-wider uppercase border border-white/10">
-              <Sparkles className="w-3 h-3 text-amber-300" />
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-amber-300 font-bold text-[9px] sm:text-[10px] tracking-wider uppercase border border-white/10">
+              <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-300" />
               <span>{step.badge}</span>
             </span>
           </div>
 
           <button
             onClick={() => endTour(true)}
-            className="p-1.5 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer touch-manipulation"
+            className="p-1 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer touch-manipulation"
             title="End Tour (Esc)"
           >
             <X className="w-4 h-4" />
@@ -396,67 +408,67 @@ export const ProjectTourGuide: React.FC<ProjectTourGuideProps> = ({
         </div>
 
         {/* Card Body with Responsive Scroll */}
-        <div className="p-3.5 sm:p-5 space-y-2.5 sm:space-y-3 bg-white max-h-[min(340px,calc(100vh-210px))] overflow-y-auto overscroll-contain">
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            <div className={`p-2 sm:p-2.5 rounded-xl ${step.accentColor} shrink-0 shadow-xs`}>
-              <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+        <div className="p-2.5 sm:p-5 space-y-2 sm:space-y-3 bg-white max-h-[35vh] sm:max-h-[min(340px,calc(100vh-210px))] overflow-y-auto overscroll-contain">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className={`p-1.5 sm:p-2.5 rounded-xl ${step.accentColor} shrink-0 shadow-xs`}>
+              <Icon className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm sm:text-base font-bold text-stone-900 tracking-tight leading-snug truncate">
+              <h3 className="text-xs sm:text-base font-bold text-stone-900 tracking-tight leading-snug truncate">
                 {step.title}
               </h3>
-              <span className="text-[9px] sm:text-[10px] font-semibold text-purple-950 uppercase tracking-wider block">
+              <span className="text-[8px] sm:text-[10px] font-semibold text-purple-950 uppercase tracking-wider block">
                 Project Guide ({currentStepIndex + 1} of {PROJECT_TOUR_STEPS.length})
               </span>
             </div>
           </div>
 
           {/* "What is this?" Section */}
-          <div className="p-2.5 sm:p-3.5 rounded-xl bg-[#FBF9F5] border border-[#E8E2D5] space-y-1">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-stone-900">
-              <HelpCircle className="w-3.5 h-3.5 text-purple-900 shrink-0" />
+          <div className="p-2 sm:p-3.5 rounded-xl bg-[#FBF9F5] border border-[#E8E2D5] space-y-0.5 sm:space-y-1">
+            <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-stone-900">
+              <HelpCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-purple-900 shrink-0" />
               <span>What is this?</span>
             </div>
-            <p className="text-xs text-stone-600 leading-relaxed">
+            <p className="text-[11px] sm:text-xs text-stone-600 leading-relaxed pl-4 sm:pl-5">
               {step.whatIsThis}
             </p>
           </div>
 
           {/* "How to use it" Section */}
-          <div className="p-2.5 sm:p-3.5 rounded-xl bg-purple-50/50 border border-purple-200/60 space-y-1">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-purple-950">
-              <CheckCircle2 className="w-3.5 h-3.5 text-purple-900 shrink-0" />
+          <div className="p-2 sm:p-3.5 rounded-xl bg-purple-50/50 border border-purple-200/60 space-y-0.5 sm:space-y-1">
+            <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-purple-950">
+              <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-purple-900 shrink-0" />
               <span>How to use it:</span>
             </div>
-            <p className="text-xs text-purple-950/80 leading-relaxed font-medium">
+            <p className="text-[11px] sm:text-xs text-purple-950/80 leading-relaxed font-medium pl-4 sm:pl-5">
               {step.howToUse}
             </p>
           </div>
         </div>
 
         {/* Card Footer: Navigation Controls */}
-        <div className="p-3 sm:p-3.5 bg-stone-50 border-t border-stone-200 flex items-center justify-between gap-2">
+        <div className="px-2.5 sm:px-5 py-2 sm:py-3 bg-stone-50 border-t border-stone-200 flex items-center justify-between gap-2">
           {/* Step Indicator Dots */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             {PROJECT_TOUR_STEPS.map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => setCurrentStepIndex(idx)}
                 className={`h-1.5 rounded-full transition-all cursor-pointer ${
                   idx === currentStepIndex
-                    ? 'w-5 bg-[#4A154B]'
-                    : 'w-1.5 bg-stone-300 hover:bg-stone-400'
+                    ? 'w-4 sm:w-5 bg-[#4A154B]'
+                    : 'w-1 sm:w-1.5 bg-stone-300 hover:bg-stone-400'
                 }`}
                 title={`Go to step ${idx + 1}`}
               />
             ))}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {currentStepIndex > 0 && (
               <button
                 onClick={handlePrev}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-300 hover:bg-stone-100 rounded-lg shadow-2xs transition-colors cursor-pointer touch-manipulation"
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-300 hover:bg-stone-100 rounded-lg shadow-2xs transition-colors cursor-pointer touch-manipulation"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 <span>Back</span>
@@ -465,7 +477,7 @@ export const ProjectTourGuide: React.FC<ProjectTourGuideProps> = ({
 
             <button
               onClick={handleNext}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-[#4A154B] hover:bg-[#3B0F3C] rounded-lg shadow-xs transition-all cursor-pointer touch-manipulation active:scale-95"
+              className="flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 text-xs font-bold text-white bg-[#4A154B] hover:bg-[#3B0F3C] rounded-lg shadow-xs transition-all cursor-pointer touch-manipulation active:scale-95"
             >
               <span>{isLastStep ? 'Got it, Thanks!' : 'Next'}</span>
               {isLastStep ? (

@@ -11,6 +11,10 @@ interface UiContextType {
   isTutorialOpen: boolean;
   openTutorial: () => void;
   closeTutorial: () => void;
+  isSupportModalOpen: boolean;
+  supportSubject: string;
+  openSupportModal: (subject?: string) => void;
+  closeSupportModal: () => void;
 }
 
 const UiContext = createContext<UiContextType | undefined>(undefined);
@@ -18,6 +22,8 @@ const UiContext = createContext<UiContextType | undefined>(undefined);
 export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+  const [supportSubject, setSupportSubject] = useState('Support & Feedback - Trinetra Tasks');
   const pathname = usePathname();
 
   // Close sidebar automatically when navigating to a new page on mobile
@@ -32,6 +38,12 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const openTutorial = () => setIsTutorialOpen(true);
   const closeTutorial = () => setIsTutorialOpen(false);
 
+  const openSupportModal = (subject?: string) => {
+    if (subject) setSupportSubject(subject);
+    setIsSupportModalOpen(true);
+  };
+  const closeSupportModal = () => setIsSupportModalOpen(false);
+
   return (
     <UiContext.Provider
       value={{
@@ -42,6 +54,10 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         isTutorialOpen,
         openTutorial,
         closeTutorial,
+        isSupportModalOpen,
+        supportSubject,
+        openSupportModal,
+        closeSupportModal,
       }}
     >
       {children}

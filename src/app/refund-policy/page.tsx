@@ -4,8 +4,10 @@ import React from 'react';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { ShieldAlert, ArrowLeft, CheckCircle2, AlertTriangle, Mail } from 'lucide-react';
+import { useUi } from '@/lib/ui-context';
 
 export default function RefundPolicyPage() {
+  const { openSupportModal } = useUi();
   return (
     <div className="flex-1 flex flex-col min-h-screen bg-[#FBF9F5]">
       <Header
@@ -96,9 +98,13 @@ export default function RefundPolicyPage() {
               <Mail className="w-5 h-5 text-purple-900 shrink-0" />
               <div>
                 <span className="font-bold text-stone-900 block text-xs">Trinetra Billing & Support</span>
-                <a href="mailto:support@trinetraedu-ai.com" className="text-purple-900 font-mono text-xs hover:underline">
+                <button
+                  type="button"
+                  onClick={() => openSupportModal('Billing & Refund Inquiry - Trinetra Tasks')}
+                  className="text-purple-900 font-mono text-xs hover:underline cursor-pointer text-left font-semibold"
+                >
                   support@trinetraedu-ai.com
-                </a>
+                </button>
               </div>
             </div>
           </section>

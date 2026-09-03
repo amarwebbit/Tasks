@@ -4,16 +4,18 @@ import React from 'react';
 import { TrinetraProvider, useTrinetra } from '@/lib/store';
 import { Sidebar } from './Sidebar';
 import { AuthScreen } from './AuthScreen';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Mail } from 'lucide-react';
 
 import { usePathname } from 'next/navigation';
-import { UiProvider } from '@/lib/ui-context';
+import { UiProvider, useUi } from '@/lib/ui-context';
 import { SecurityGuard } from './SecurityGuard';
 import { FeatureTourGuide } from './FeatureTourGuide';
+import { SupportFeedbackModal } from './SupportFeedbackModal';
 
 const InnerShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const pathname = usePathname();
   const { currentUser, isLoading } = useTrinetra();
+  const { openSupportModal } = useUi();
 
   // Completely isolate /losers stealth admin route from user app layout
   if (pathname?.startsWith('/losers')) {
@@ -51,17 +53,20 @@ const InnerShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0 ml-2">
-            <a
-              href="mailto:support@trinetraedu-ai.com?subject=Beta%20Feedback%20-%20Trinetra%20Tasks"
-              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold transition-all border border-white/20 cursor-pointer"
+            <button
+              type="button"
+              onClick={() => openSupportModal('Beta Feedback & Bug Report - Trinetra Tasks')}
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold transition-all border border-white/20 cursor-pointer"
             >
+              <Mail className="w-3 h-3 text-amber-300" />
               <span>Feedback & Bug Report</span>
-            </a>
+            </button>
           </div>
         </div>
 
         {children}
         <FeatureTourGuide />
+        <SupportFeedbackModal />
       </main>
     </div>
   );
