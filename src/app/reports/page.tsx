@@ -6,7 +6,7 @@ import { getSupabaseClient } from '@/lib/supabaseClient';
 import { Header } from '@/components/Header';
 import { StatusBadge } from '@/components/StatusBadge';
 import { PriorityBadge } from '@/components/PriorityBadge';
-import { FileSpreadsheet, Download, Filter, CheckCircle2, AlertCircle, Lock, Sparkles } from 'lucide-react';
+import { FileSpreadsheet, Download, Filter, CheckCircle2, AlertCircle, Lock, Sparkles, Loader2 } from 'lucide-react';
 import { PaywallModal } from '@/components/PaywallModal';
 
 export default function ReportsPage() {
@@ -93,7 +93,7 @@ export default function ReportsPage() {
       a.remove();
       window.URL.revokeObjectURL(url);
 
-      setExportMessage(`Successfully generated and downloaded ${type === 'QUICK' ? 'Quick Report' : 'Complete 7-Sheet Workbook'}.`);
+      setExportMessage(`Successfully generated and downloaded ${type === 'QUICK' ? 'Quick Report' : 'Complete 8-Sheet Workbook'}.`);
     } catch (err: any) {
       console.error(err);
       alert(`Export generation failed: ${err.message || err}`);
@@ -141,12 +141,12 @@ export default function ReportsPage() {
               disabled={isExporting || !projectId}
               className="mt-5 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#F4EFE6] hover:bg-[#ECE5D8] text-stone-800 text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Download className="w-4 h-4 text-purple-900" />
+              {isExporting ? <Loader2 className="w-4 h-4 text-purple-900 animate-spin" /> : <Download className="w-4 h-4 text-purple-900" />}
               <span>{isExporting ? 'Generating XLSX...' : 'Download Quick Report (.xlsx)'}</span>
             </button>
           </div>
 
-          <div className={`bg-white border-2 rounded-xl p-6 shadow-2xs flex flex-col justify-between ${!isPro ? 'border-amber-300 bg-amber-50/20 relative overflow-hidden' : 'border-purple-200'}`}>
+          <div data-tour="reports-workbook-card" className={`bg-white border-2 rounded-xl p-6 shadow-2xs flex flex-col justify-between ${!isPro ? 'border-amber-300 bg-amber-50/20 relative overflow-hidden' : 'border-purple-200'}`}>
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 uppercase">
@@ -164,9 +164,9 @@ export default function ReportsPage() {
                   </span>
                 )}
               </div>
-              <h3 className="text-base font-bold text-stone-900">7-Sheet Comprehensive Audit Workbook</h3>
+              <h3 className="text-base font-bold text-stone-900">8-Sheet Comprehensive Audit Workbook</h3>
               <p className="text-xs text-stone-600 mt-1">
-                Includes: <strong>1. Summary, 2. Tasks, 3. Activity Timeline, 4. Comments & Clarifications, 5. Team Members & Workload, 6. Attachments, 7. Email Event Logs</strong>.
+                Includes: <strong>1. Summary, 2. Tasks, 3. Activity Timeline, 4. Comments & Clarifications, 5. Team Members & Workload, 6. Attachments, 7. Email Event Logs, 8. Code Commits & Diffs</strong>.
               </p>
             </div>
 
@@ -182,12 +182,12 @@ export default function ReportsPage() {
               {!isPro ? (
                 <>
                   <Lock className="w-4 h-4" />
-                  <span>Unlock 7-Sheet Audit Workbook (Pro)</span>
+                  <span>Unlock 8-Sheet Audit Workbook (Pro)</span>
                 </>
               ) : (
                 <>
-                  <Download className="w-4 h-4 text-white" />
-                  <span>{isExporting ? 'Building 7-Sheet Workbook...' : 'Download Complete Workbook (.xlsx)'}</span>
+                  {isExporting ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Download className="w-4 h-4 text-white" />}
+                  <span>{isExporting ? 'Building 8-Sheet Workbook...' : 'Download Complete Workbook (.xlsx)'}</span>
                 </>
               )}
             </button>
@@ -354,8 +354,8 @@ export default function ReportsPage() {
       <PaywallModal
         isOpen={isPaywallOpen}
         onClose={() => setIsPaywallOpen(false)}
-        title="Unlock Complete 7-Sheet Excel Audits"
-        subtitle="7-Sheet Workbook includes full immutable activity timeline, discussion comments, attachments, and email logs. Upgrade to Pro for unlimited exports."
+        title="Unlock Complete 8-Sheet Excel Audits"
+        subtitle="8-Sheet Workbook includes full immutable activity timeline, discussion comments, attachments, email logs, and code commits. Upgrade to Pro for unlimited exports."
         highlightedFeature="REPORTS"
       />
     </div>

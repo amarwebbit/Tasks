@@ -25,7 +25,7 @@ export default function TeamDirectoryPage() {
 
       <div className="p-8 max-w-7xl w-full mx-auto space-y-6">
         {/* Architecture Notice */}
-        <div className="p-4 bg-purple-50/60 border border-purple-200 rounded-xl flex items-start gap-3">
+        <div data-tour="team-header" className="p-4 bg-purple-50/60 border border-purple-200 rounded-xl flex items-start gap-3">
           <Shield className="w-5 h-5 text-purple-900 shrink-0 mt-0.5" />
           <div className="text-xs text-purple-950">
             <strong className="block text-sm text-purple-950 mb-0.5">Project-Scoped Permission Architecture</strong>

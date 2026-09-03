@@ -17,6 +17,7 @@ import {
   ProjectRole,
 } from '@/types/database';
 import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient';
+import { toFriendlyError } from './friendlyError';
 
 interface TrinetraContextType {
   isConfigured: boolean;
@@ -445,7 +446,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     if (!supabase) return { success: false, error: 'Supabase is not configured yet. Please add your credentials in .env.local.' };
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { success: false, error: error.message };
+    if (error) return { success: false, error: toFriendlyError(error) };
     await refreshData();
     return { success: true };
   };
@@ -459,7 +460,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
         data: { full_name: fullName },
       },
     });
-    if (error) return { success: false, error: error.message };
+    if (error) return { success: false, error: toFriendlyError(error) };
     if (data.session) {
       await refreshData();
     }
@@ -548,26 +549,35 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
   const createOrganization = async (name: string) => {
     if (!supabase || !currentUser) return { success: false, error: 'Not authenticated' };
     const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString(36)}`;
-    const { data, error } = await supabase.from('organizations').insert({
+    const orgId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `org_${Date.now()}`;
+    
+    // Insert with generated ID so that RLS does not fail on select before member record is created
+    const { error } = await supabase.from('organizations').insert({
+      id: orgId,
       name,
       slug,
       created_by: currentUser.id,
-    }).select().single();
+    });
 
     if (error) {
       console.error('Error creating organization:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: toFriendlyError(error) };
     }
 
-    await supabase.from('organization_members').insert({
-      organization_id: data.id,
+    const { error: memberError } = await supabase.from('organization_members').insert({
+      organization_id: orgId,
       user_id: currentUser.id,
       role: 'OWNER',
       status: 'ACTIVE',
     });
 
+    if (memberError) {
+      console.error('Error creating organization member:', memberError);
+    }
+
+    const createdOrg = { id: orgId, name, slug, created_by: currentUser.id } as Organization;
     await refreshData();
-    return { success: true, organization: data };
+    return { success: true, organization: createdOrg };
   };
 
   // 5. Create Project
@@ -603,7 +613,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
     if (!orgId) {
       const orgRes = await createOrganization('Trinetra Workspace');
       if (!orgRes.success || !orgRes.organization) {
-        return { success: false, error: orgRes.error || 'Could not create organization' };
+        return { success: false, error: toFriendlyError(orgRes.error, 'Could not set up workspace. Please try again.') };
       }
       orgId = orgRes.organization.id;
     }
@@ -623,7 +633,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
 
     if (error) {
       console.error('Error creating project:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: toFriendlyError(error) };
     }
 
     // Insert Team Leader into project_members
@@ -684,7 +694,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.from('projects').delete().eq('id', projectId);
     if (error) {
       console.error('Error deleting project:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: toFriendlyError(error) };
     }
 
     await refreshData();
@@ -713,7 +723,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.from('project_members').delete().eq('id', memberId);
     if (error) {
       console.error('Error removing member:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: toFriendlyError(error) };
     }
 
     await refreshData();
@@ -785,7 +795,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
       status: 'INVITED',
     }).select().single();
 
-    if (error) return { success: false, error: error.message };
+    if (error) return { success: false, error: toFriendlyError(error) };
 
     // Server-side email notification
     await dispatchEmailNotification({
@@ -845,7 +855,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.from('invitations').delete().eq('id', invitationId);
     if (error) {
       console.error('Error cancelling invitation:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: toFriendlyError(error) };
     }
 
     await refreshData();
@@ -896,7 +906,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
       due_date: due_date || null,
     }).select().single();
 
-    if (error) return { success: false, error: error.message };
+    if (error) return { success: false, error: toFriendlyError(error) };
 
     await supabase.from('task_activity').insert({
       task_id: newTask.id,
@@ -997,7 +1007,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
       .insert(insertData)
       .select();
 
-    if (error) return { success: false, error: error.message };
+    if (error) return { success: false, error: toFriendlyError(error) };
 
     // Batch insert activities and notifications
     const activityLogs: any[] = [];
@@ -1065,7 +1075,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.from('tasks').delete().eq('id', taskId);
     if (error) {
       console.error('Error deleting task:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: toFriendlyError(error) };
     }
 
     await refreshData();

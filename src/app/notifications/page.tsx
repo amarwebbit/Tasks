@@ -26,7 +26,7 @@ export default function NotificationsPage() {
       />
 
       <div className="p-8 max-w-4xl w-full mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+        <div data-tour="notifications-header" className="flex items-center justify-between p-2 rounded-lg">
           <div className="flex items-center gap-2">
             <Bell className="w-5 h-5 text-purple-900" />
             <h2 className="text-sm font-bold text-stone-900">

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useTrinetra } from '@/lib/store';
 import { AssignmentRule } from '@/types/database';
-import { X, FolderPlus, AlertCircle, CheckCircle2, Lock, Sparkles, GitBranch, Link2 } from 'lucide-react';
+import { X, FolderPlus, AlertCircle, CheckCircle2, Lock, Sparkles, GitBranch, Link2, Loader2 } from 'lucide-react';
 import { PaywallModal } from './PaywallModal';
+import { toFriendlyError } from '@/lib/friendlyError';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -88,7 +89,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
       });
 
       if (!res.success) {
-        setError(res.error || 'Failed to create project.');
+        setError(toFriendlyError(res.error, 'Failed to create project. Please try again.'));
         setIsSubmitting(false);
         return;
       }
@@ -120,7 +121,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
         onClose();
       }, 800);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error creating project');
+      setError(toFriendlyError(err, 'An unexpected error occurred while creating the project.'));
       setIsSubmitting(false);
     }
   };
@@ -402,9 +403,21 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
               <button
                 type="submit"
                 disabled={isSubmitting || isSuccess}
-                className="px-5 py-2 text-sm font-medium text-white bg-purple-950 hover:bg-purple-900 rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-purple-950 hover:bg-purple-900 rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer"
               >
-                {isSubmitting ? 'Creating...' : isSuccess ? 'Created!' : 'Create Project'}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                    <span>Creating Project...</span>
+                  </>
+                ) : isSuccess ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Created!</span>
+                  </>
+                ) : (
+                  <span>Create Project</span>
+                )}
               </button>
             )}
           </div>

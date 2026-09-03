@@ -32,6 +32,7 @@ import {
   XCircle,
   Lock,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { AssignmentRule, ProjectRole } from '@/types/database';
 import { PaywallModal } from '@/components/PaywallModal';
@@ -235,9 +236,9 @@ export default function ProjectDetailPage() {
             <button
               onClick={() => handleDownloadReport('QUICK')}
               disabled={isExporting}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors cursor-pointer"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
             >
-              <Download className="w-3.5 h-3.5" />
+              {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
               <span>{isExporting ? 'Exporting...' : 'Export Excel'}</span>
             </button>
           </div>
@@ -835,10 +836,10 @@ export default function ProjectDetailPage() {
                 <button
                   onClick={() => handleDownloadReport('QUICK')}
                   disabled={isExporting}
-                  className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-white border border-stone-300 hover:border-stone-400 text-stone-800 text-xs font-semibold shadow-xs"
+                  className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-white border border-stone-300 hover:border-stone-400 text-stone-800 text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
                 >
-                  <Download className="w-4 h-4" />
-                  <span>Download Quick XLSX</span>
+                  {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  <span>{isExporting ? 'Building Quick XLSX...' : 'Download Quick XLSX'}</span>
                 </button>
               </div>
 
@@ -846,7 +847,7 @@ export default function ProjectDetailPage() {
                 <div>
                   <div className="flex items-center justify-between">
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 uppercase">
-                      Complete 7-Sheet Workbook
+                      Complete 8-Sheet Workbook
                     </span>
                     {!isPro ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-950 text-[10px] font-black uppercase">
@@ -862,7 +863,7 @@ export default function ProjectDetailPage() {
                   </div>
                   <h4 className="text-sm font-bold text-stone-900 mt-2">Comprehensive Audit Report</h4>
                   <p className="text-xs text-stone-600 mt-1">
-                    Multi-sheet workbook containing: 1. Project Summary, 2. Tasks, 3. Activity History, 4. Comments, 5. Team Members, 6. Attachments, 7. Email Logs.
+                    Multi-sheet workbook containing: 1. Project Summary, 2. Tasks, 3. Activity History, 4. Comments, 5. Team Members, 6. Attachments, 7. Email Logs, 8. Code Commits.
                   </p>
                 </div>
                 <button
@@ -871,13 +872,18 @@ export default function ProjectDetailPage() {
                   className={`mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold shadow-xs transition-all cursor-pointer ${
                     !isPro
                       ? 'bg-linear-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-stone-950'
-                      : 'bg-purple-950 hover:bg-purple-900 text-white'
+                      : 'bg-purple-950 hover:bg-purple-900 text-white disabled:opacity-50'
                   }`}
                 >
                   {!isPro ? (
                     <>
                       <Lock className="w-4 h-4" />
-                      <span>Unlock 7-Sheet Audit Workbook (Pro)</span>
+                      <span>Unlock 8-Sheet Audit Workbook (Pro)</span>
+                    </>
+                  ) : isExporting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Building 8-Sheet Workbook...</span>
                     </>
                   ) : (
                     <>
@@ -956,7 +962,7 @@ export default function ProjectDetailPage() {
                     }}
                     className="flex items-center gap-2 px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    {isDeletingProject ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     <span>{isDeletingProject ? 'Deleting Project...' : 'Delete Entire Project'}</span>
                   </button>
                 </div>
@@ -976,7 +982,7 @@ export default function ProjectDetailPage() {
         isOpen={isPaywallOpen}
         onClose={() => setIsPaywallOpen(false)}
         title="Upgrade to Trinetra Pro"
-        subtitle="Free tier allows 1 project and 2 members. Upgrade to Pro for unlimited team collaboration and complete 7-sheet Excel audit workbooks."
+        subtitle="Free tier allows 1 project and 2 members. Upgrade to Pro for unlimited team collaboration and complete 8-sheet Excel audit workbooks."
         highlightedFeature="REPORTS"
       />
 

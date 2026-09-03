@@ -8,12 +8,16 @@ interface UiContextType {
   toggleSidebar: () => void;
   closeSidebar: () => void;
   openSidebar: () => void;
+  isTutorialOpen: boolean;
+  openTutorial: () => void;
+  closeTutorial: () => void;
 }
 
 const UiContext = createContext<UiContextType | undefined>(undefined);
 
 export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const pathname = usePathname();
 
   // Close sidebar automatically when navigating to a new page on mobile
@@ -25,8 +29,21 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const closeSidebar = () => setIsSidebarOpen(false);
   const openSidebar = () => setIsSidebarOpen(true);
 
+  const openTutorial = () => setIsTutorialOpen(true);
+  const closeTutorial = () => setIsTutorialOpen(false);
+
   return (
-    <UiContext.Provider value={{ isSidebarOpen, toggleSidebar, closeSidebar, openSidebar }}>
+    <UiContext.Provider
+      value={{
+        isSidebarOpen,
+        toggleSidebar,
+        closeSidebar,
+        openSidebar,
+        isTutorialOpen,
+        openTutorial,
+        closeTutorial,
+      }}
+    >
       {children}
     </UiContext.Provider>
   );

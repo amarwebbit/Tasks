@@ -352,7 +352,7 @@ export function generatePaymentReceiptEmail({
         <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #D6D3D1; line-height: 1.8;">
           <li><strong>Unlimited Projects:</strong> Create and manage unlimited projects without restrictions.</li>
           <li><strong>Unlimited Team Members:</strong> Onboard entire organizations and multi-leader teams.</li>
-          <li><strong>Complete 7-Sheet Audit Workbook Exports:</strong> Full historical timeline, comments, files, and email audit logs.</li>
+          <li><strong>Complete 8-Sheet Audit Workbook Exports:</strong> Full historical timeline, comments, files, email logs, and code commits.</li>
         </ul>
       </div>
 
@@ -418,7 +418,7 @@ export function generateAdminUpgradeEmail({
         <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #D6D3D1; line-height: 1.8;">
           <li><strong>Unlimited Projects:</strong> Create and coordinate across multiple isolated projects.</li>
           <li><strong>Unlimited Team Members:</strong> Invite teammates and assign leaders without restrictions.</li>
-          <li><strong>Complete 7-Sheet Excel Audits:</strong> Export complete immutable workbooks anytime.</li>
+          <li><strong>Complete 8-Sheet Excel Audits:</strong> Export complete immutable workbooks anytime.</li>
         </ul>
       </div>
 

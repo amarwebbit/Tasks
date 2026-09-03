@@ -43,7 +43,7 @@ export default function OrganizationDashboard() {
 
       <div className="p-4 sm:p-8 space-y-8 max-w-7xl w-full mx-auto">
         {/* Top Summary Metrics */}
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+        <div data-tour="command-center-metrics" className="grid grid-cols-2 lg:grid-cols-6 gap-4">
           <div className="p-4 bg-white border border-[#E8E2D5] rounded-xl shadow-2xs">
             <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400">Projects</span>
             <div className="flex items-baseline gap-2 mt-1">

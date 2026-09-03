@@ -33,7 +33,7 @@ const faqs: FAQItem[] = [
     category: 'PRICING',
     question: 'What do I get when I upgrade to Trinetra Pro?',
     answer:
-      'Trinetra Pro (available at ₹99/month or ₹399/year) unlocks Unlimited Projects, Unlimited Team Members per project, and Comprehensive 7-Sheet Excel Audit Workbooks with immutable change history.',
+      'Trinetra Pro (available at ₹99/month or ₹399/year) unlocks Unlimited Projects, Unlimited Team Members per project, and Comprehensive 8-Sheet Excel Audit Workbooks with immutable change history and code traceability.',
   },
   {
     category: 'PRICING',
@@ -61,9 +61,9 @@ const faqs: FAQItem[] = [
   },
   {
     category: 'EXPORTS',
-    question: 'What is included in the 7-Sheet Complete Excel Audit Workbook?',
+    question: 'What is included in the 8-Sheet Complete Excel Audit Workbook?',
     answer:
-      'The Pro Audit Workbook exports: (1) Executive Summary KPIs, (2) Master Tasks Roster, (3) Deliverable Review Ledger, (4) Team Assignment Matrix, (5) Granular Activity History, (6) Discussion Comments, and (7) Email Dispatch Audit Logs.',
+      'The Pro Audit Workbook exports: (1) Executive Summary KPIs, (2) Master Tasks Roster, (3) Granular Activity History, (4) Discussion Comments, (5) Team Members & Workload, (6) Attachments, (7) Email Dispatch Audit Logs, and (8) Code Commits & Diffs.',
   },
   {
     category: 'SECURITY',

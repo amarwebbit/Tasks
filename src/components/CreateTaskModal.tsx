@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTrinetra } from '@/lib/store';
 import { TaskPriority } from '@/types/database';
-import { X, AlertCircle, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { X, AlertCircle, CheckCircle2, ShieldAlert, Loader2 } from 'lucide-react';
+import { toFriendlyError } from '@/lib/friendlyError';
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -80,7 +81,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       });
 
       if (!res.success) {
-        setError(res.error || 'Failed to create task.');
+        setError(toFriendlyError(res.error, 'Failed to create task. Please try again.'));
         setIsSubmitting(false);
         return;
       }
@@ -97,7 +98,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         onClose();
       }, 800);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error creating task');
+      setError(toFriendlyError(err, 'An unexpected error occurred while creating the task.'));
       setIsSubmitting(false);
     }
   };
@@ -287,9 +288,21 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             <button
               type="submit"
               disabled={!canAssign || isSubmitting || isSuccess}
-              className="px-5 py-2 text-sm font-medium text-white bg-purple-950 hover:bg-purple-900 rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-purple-950 hover:bg-purple-900 rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              {isSubmitting ? 'Creating...' : isSuccess ? 'Created!' : 'Create Task'}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                  <span>{assignedTo ? 'Assigning & Creating...' : 'Creating Task...'}</span>
+                </>
+              ) : isSuccess ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Created!</span>
+                </>
+              ) : (
+                <span>{assignedTo ? 'Assign & Create Task' : 'Create Task'}</span>
+              )}
             </button>
           </div>
         </form>

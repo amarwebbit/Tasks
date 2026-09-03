@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useTrinetra } from '@/lib/store';
 import { ProjectRole } from '@/types/database';
-import { X, UserPlus, AlertCircle, CheckCircle2, Lock, Sparkles } from 'lucide-react';
+import { X, UserPlus, AlertCircle, CheckCircle2, Lock, Sparkles, Loader2 } from 'lucide-react';
 import { PaywallModal } from './PaywallModal';
+import { toFriendlyError } from '@/lib/friendlyError';
 
 interface InviteMemberModalProps {
   isOpen: boolean;
@@ -61,7 +62,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
       });
 
       if (!res.success) {
-        setError(res.error || 'Failed to send invitation.');
+        setError(toFriendlyError(res.error, 'Failed to send invitation. Please try again.'));
         setIsSubmitting(false);
         return;
       }
@@ -74,7 +75,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
         onClose();
       }, 800);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error sending invitation');
+      setError(toFriendlyError(err, 'An unexpected error occurred while sending the invitation.'));
       setIsSubmitting(false);
     }
   };
@@ -225,9 +226,21 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || isSuccess}
-                className="px-5 py-2 text-sm font-medium text-white bg-purple-950 hover:bg-purple-900 rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-purple-950 hover:bg-purple-900 rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer"
               >
-                {isSubmitting ? 'Sending...' : isSuccess ? 'Invited!' : 'Send Invitation'}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                    <span>Sending Invitation...</span>
+                  </>
+                ) : isSuccess ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Invited!</span>
+                  </>
+                ) : (
+                  <span>Send Invitation</span>
+                )}
               </button>
             )}
           </div>

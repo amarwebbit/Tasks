@@ -56,7 +56,7 @@ export default function RefundPolicyPage() {
             </p>
             <ul className="list-disc pl-5 space-y-1.5 text-stone-600">
               <li><strong>Free Plan:</strong> ₹0.00 — 1 Project, up to 2 Team Members, and standard reporting.</li>
-              <li><strong>Pro Monthly:</strong> ₹99 / Month — Unlimited Projects, Unlimited Members, and 7-Sheet Excel Workbooks.</li>
+              <li><strong>Pro Monthly:</strong> ₹99 / Month — Unlimited Projects, Unlimited Members, and 8-Sheet Excel Workbooks.</li>
               <li><strong>Pro Annual:</strong> ₹399 / Year — Full Pro capabilities for a 365-day period (66% Savings).</li>
             </ul>
           </section>

@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { UiProvider } from '@/lib/ui-context';
 import { SecurityGuard } from './SecurityGuard';
+import { FeatureTourGuide } from './FeatureTourGuide';
 
 const InnerShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const pathname = usePathname();
@@ -60,6 +61,7 @@ const InnerShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </div>
 
         {children}
+        <FeatureTourGuide />
       </main>
     </div>
   );

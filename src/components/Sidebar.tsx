@@ -18,6 +18,7 @@ import {
   ShieldAlert,
   Lock,
   X,
+  HelpCircle,
 } from 'lucide-react';
 import { CreateProjectModal } from './CreateProjectModal';
 import { PaywallModal } from './PaywallModal';
@@ -35,7 +36,7 @@ export const Sidebar: React.FC = () => {
     signOut,
   } = useTrinetra();
 
-  const { isSidebarOpen, closeSidebar } = useUi();
+  const { isSidebarOpen, closeSidebar, openTutorial } = useUi();
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
@@ -172,7 +173,7 @@ export const Sidebar: React.FC = () => {
 
           {/* Multi-Project Hierarchy */}
           <div>
-            <div className="flex items-center justify-between px-3 mb-1.5">
+            <div data-tour="sidebar-create-project" className="flex items-center justify-between px-3 mb-1.5 p-1 rounded-md">
               <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
                 Projects ({projects.length})
               </span>
@@ -239,7 +240,7 @@ export const Sidebar: React.FC = () => {
                 </span>
               </div>
               <p className="text-[10px] text-purple-200 leading-tight">
-                Unlock unlimited projects, unlimited team members & 7-sheet Excel audit exports.
+                Unlock unlimited projects, unlimited team members & 8-sheet Excel audit exports.
               </p>
               <button
                 type="button"
@@ -265,6 +266,16 @@ export const Sidebar: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-between text-[10px] text-stone-400 pt-1 border-t border-stone-100">
+            <button
+              type="button"
+              onClick={openTutorial}
+              className="hover:text-purple-900 transition-colors font-semibold flex items-center gap-1 cursor-pointer text-purple-950"
+              title="View Onboarding Tour"
+            >
+              <HelpCircle className="w-3 h-3 text-purple-900" />
+              <span>Tour</span>
+            </button>
+            <span>•</span>
             <Link href="/faq" className="hover:text-purple-900 transition-colors font-medium">
               FAQ
             </Link>

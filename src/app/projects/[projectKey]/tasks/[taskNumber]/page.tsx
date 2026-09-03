@@ -29,6 +29,7 @@ import {
   Copy,
   Check,
   GitCommit,
+  Loader2,
 } from 'lucide-react';
 import { TaskComment } from '@/types/database';
 import TaskCodeChangesTab from '@/components/github/TaskCodeChangesTab';
@@ -69,10 +70,15 @@ export default function TaskDetailPage() {
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [submissionNote, setSubmissionNote] = useState('');
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
+  const [isSubmittingWork, setIsSubmittingWork] = useState(false);
   const [changesReason, setChangesReason] = useState('');
   const [isChangesModalOpen, setIsChangesModalOpen] = useState(false);
+  const [isRequestingChanges, setIsRequestingChanges] = useState(false);
+  const [isReportingBlocker, setIsReportingBlocker] = useState(false);
+  const [isPostingComment, setIsPostingComment] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [actionLoadingType, setActionLoadingType] = useState<'ACKNOWLEDGE' | 'START' | 'UNBLOCK' | 'APPROVE' | null>(null);
   const [isDeletingTask, setIsDeletingTask] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isLinkPushedCodeOpen, setIsLinkPushedCodeOpen] = useState(false);
@@ -114,10 +120,15 @@ export default function TaskDetailPage() {
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!commentText.trim()) return;
-    await addComment(task.id, commentText.trim(), commentType);
-    setCommentText('');
-    setCommentType('COMMENT');
+    if (!commentText.trim() || isPostingComment) return;
+    setIsPostingComment(true);
+    try {
+      await addComment(task.id, commentText.trim(), commentType);
+      setCommentText('');
+      setCommentType('COMMENT');
+    } finally {
+      setIsPostingComment(false);
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,26 +211,35 @@ export default function TaskDetailPage() {
               ID: {task.id}
             </span>
             {isReviewer && (
-              <button
-                type="button"
-                disabled={isDeletingTask}
-                onClick={async () => {
-                  if (window.confirm(`Are you sure you want to permanently delete task ${projectKey}-${task.task_number} ("${task.title}")?`)) {
-                    setIsDeletingTask(true);
-                    const res = await deleteTask(task.id);
-                    if (res.success) {
-                      router.push(`/projects/${projectKey}`);
-                    } else {
-                      alert(res.error || 'Failed to delete task.');
-                      setIsDeletingTask(false);
+                <button
+                  type="button"
+                  disabled={isDeletingTask}
+                  onClick={async () => {
+                    if (window.confirm(`Are you sure you want to permanently delete task ${projectKey}-${task.task_number} ("${task.title}")?`)) {
+                      setIsDeletingTask(true);
+                      const res = await deleteTask(task.id);
+                      if (res.success) {
+                        router.push(`/projects/${projectKey}`);
+                      } else {
+                        alert(res.error || 'Failed to delete task.');
+                        setIsDeletingTask(false);
+                      }
                     }
-                  }
-                }}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer disabled:opacity-50"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{isDeletingTask ? 'Deleting...' : 'Delete Task'}</span>
-              </button>
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {isDeletingTask ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Task</span>
+                    </>
+                  )}
+                </button>
             )}
           </div>
         </div>
@@ -272,34 +292,56 @@ export default function TaskDetailPage() {
                   {/* ASSIGNED -> ACKNOWLEDGE */}
                   {task.status === 'ASSIGNED' && (
                     <button
-                      disabled={isActionLoading}
+                      disabled={Boolean(actionLoadingType) || isActionLoading}
                       onClick={async () => {
+                        setActionLoadingType('ACKNOWLEDGE');
                         setIsActionLoading(true);
                         const res = await acknowledgeTask(task.id);
                         if (!res.success) setActionError(res.error || 'Action failed');
                         setIsActionLoading(false);
+                        setActionLoadingType(null);
                       }}
                       className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
                     >
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Acknowledge Assignment</span>
+                      {actionLoadingType === 'ACKNOWLEDGE' ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Acknowledging Task...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Acknowledge Assignment</span>
+                        </>
+                      )}
                     </button>
                   )}
 
                   {/* ACKNOWLEDGED / CHANGES_REQUESTED -> START WORKING */}
                   {(task.status === 'ACKNOWLEDGED' || task.status === 'CHANGES_REQUESTED') && (
                     <button
-                      disabled={isActionLoading}
+                      disabled={Boolean(actionLoadingType) || isActionLoading}
                       onClick={async () => {
+                        setActionLoadingType('START');
                         setIsActionLoading(true);
                         const res = await startTask(task.id);
                         if (!res.success) setActionError(res.error || 'Action failed');
                         setIsActionLoading(false);
+                        setActionLoadingType(null);
                       }}
                       className="flex items-center gap-1.5 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
                     >
-                      <Play className="w-4 h-4" />
-                      <span>Start Working</span>
+                      {actionLoadingType === 'START' ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Starting Work...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4" />
+                          <span>Start Working</span>
+                        </>
+                      )}
                     </button>
                   )}
 
@@ -307,7 +349,7 @@ export default function TaskDetailPage() {
                   {task.status === 'IN_PROGRESS' && (
                     <>
                       <button
-                        disabled={isActionLoading}
+                        disabled={Boolean(actionLoadingType) || isActionLoading}
                         onClick={() => setIsBlockModalOpen(true)}
                         className="flex items-center gap-1.5 px-3.5 py-2 bg-orange-100 hover:bg-orange-200 text-orange-900 text-xs font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                       >
@@ -316,7 +358,7 @@ export default function TaskDetailPage() {
                       </button>
 
                       <button
-                        disabled={isActionLoading}
+                        disabled={Boolean(actionLoadingType) || isActionLoading}
                         onClick={() => setIsSubmitModalOpen(true)}
                         className="flex items-center gap-1.5 px-4 py-2 bg-[#4A154B] hover:bg-[#3B0F3C] text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
                       >
@@ -329,17 +371,28 @@ export default function TaskDetailPage() {
                   {/* BLOCKED -> UNBLOCK / RESUME */}
                   {task.status === 'BLOCKED' && (
                     <button
-                      disabled={isActionLoading}
+                      disabled={Boolean(actionLoadingType) || isActionLoading}
                       onClick={async () => {
+                        setActionLoadingType('UNBLOCK');
                         setIsActionLoading(true);
                         const res = await unblockTask(task.id);
                         if (!res.success) setActionError(res.error || 'Action failed');
                         setIsActionLoading(false);
+                        setActionLoadingType(null);
                       }}
                       className="flex items-center gap-1.5 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
                     >
-                      <Play className="w-4 h-4" />
-                      <span>Clear Blocker & Resume</span>
+                      {actionLoadingType === 'UNBLOCK' ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Unblocking Task...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4" />
+                          <span>Clear Blocker & Resume</span>
+                        </>
+                      )}
                     </button>
                   )}
 
@@ -360,7 +413,7 @@ export default function TaskDetailPage() {
                   {task.status === 'SUBMITTED' && (
                     <>
                       <button
-                        disabled={isActionLoading}
+                        disabled={Boolean(actionLoadingType) || isActionLoading}
                         onClick={() => setIsChangesModalOpen(true)}
                         className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-100 hover:bg-rose-200 text-rose-900 text-xs font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                       >
@@ -369,17 +422,28 @@ export default function TaskDetailPage() {
                       </button>
 
                       <button
-                        disabled={isActionLoading}
+                        disabled={Boolean(actionLoadingType) || isActionLoading}
                         onClick={async () => {
+                          setActionLoadingType('APPROVE');
                           setIsActionLoading(true);
                           const res = await approveTask(task.id);
                           if (!res.success) setActionError(res.error || 'Action failed');
                           setIsActionLoading(false);
+                          setActionLoadingType(null);
                         }}
                         className="flex items-center gap-1.5 px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
                       >
-                        <CheckCheck className="w-4 h-4" />
-                        <span>✓ Approve & Complete</span>
+                        {actionLoadingType === 'APPROVE' ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Approving Deliverable...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCheck className="w-4 h-4" />
+                            <span>✓ Approve & Complete</span>
+                          </>
+                        )}
                       </button>
                     </>
                   )}
@@ -387,17 +451,28 @@ export default function TaskDetailPage() {
                   {/* BLOCKED -> REVIEWER CAN ASSIST / UNBLOCK */}
                   {task.status === 'BLOCKED' && (
                     <button
-                      disabled={isActionLoading}
+                      disabled={Boolean(actionLoadingType) || isActionLoading}
                       onClick={async () => {
+                        setActionLoadingType('UNBLOCK');
                         setIsActionLoading(true);
                         const res = await unblockTask(task.id);
                         if (!res.success) setActionError(res.error || 'Action failed');
                         setIsActionLoading(false);
+                        setActionLoadingType(null);
                       }}
                       className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-100 hover:bg-blue-200 text-blue-900 text-xs font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                     >
-                      <Play className="w-4 h-4 text-blue-700" />
-                      <span>Unblock on Behalf of Assignee</span>
+                      {actionLoadingType === 'UNBLOCK' ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin text-blue-700" />
+                          <span>Unblocking...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4 text-blue-700" />
+                          <span>Unblock on Behalf of Assignee</span>
+                        </>
+                      )}
                     </button>
                   )}
                 </>
@@ -630,9 +705,17 @@ export default function TaskDetailPage() {
                 <div className="flex justify-end">
                   <button
                     type="submit"
-                    className="px-4 py-1.5 bg-[#4A154B] hover:bg-[#3B0F3C] text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer"
+                    disabled={isPostingComment || !commentText.trim()}
+                    className="flex items-center gap-1.5 px-4 py-1.5 bg-[#4A154B] hover:bg-[#3B0F3C] text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer disabled:opacity-50"
                   >
-                    Post Note
+                    {isPostingComment ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Posting Note...</span>
+                      </>
+                    ) : (
+                      <span>Post Note</span>
+                    )}
                   </button>
                 </div>
               </form>
@@ -730,21 +813,35 @@ export default function TaskDetailPage() {
             />
             <div className="flex justify-end gap-2 pt-2">
               <button
+                disabled={isReportingBlocker}
                 onClick={() => setIsBlockModalOpen(false)}
-                className="px-3.5 py-1.5 text-xs text-stone-600 bg-stone-100 rounded-lg"
+                className="px-3.5 py-1.5 text-xs text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-lg cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
+                disabled={isReportingBlocker || !blockerReason.trim()}
                 onClick={async () => {
-                  if (!blockerReason.trim()) return;
-                  await blockTask(task.id, blockerReason.trim());
-                  setIsBlockModalOpen(false);
-                  setBlockerReason('');
+                  if (!blockerReason.trim() || isReportingBlocker) return;
+                  setIsReportingBlocker(true);
+                  try {
+                    await blockTask(task.id, blockerReason.trim());
+                    setIsBlockModalOpen(false);
+                    setBlockerReason('');
+                  } finally {
+                    setIsReportingBlocker(false);
+                  }
                 }}
-                className="px-4 py-1.5 text-xs text-white bg-orange-700 hover:bg-orange-800 font-semibold rounded-lg"
+                className="flex items-center gap-1.5 px-4 py-1.5 text-xs text-white bg-orange-700 hover:bg-orange-800 font-semibold rounded-lg cursor-pointer disabled:opacity-50"
               >
-                Confirm Blocked
+                {isReportingBlocker ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Reporting Blocker...</span>
+                  </>
+                ) : (
+                  <span>Confirm Blocked</span>
+                )}
               </button>
             </div>
           </div>
@@ -766,24 +863,40 @@ export default function TaskDetailPage() {
               placeholder="e.g. Unit tests added, verified calculations on staging..."
               value={submissionNote}
               onChange={e => setSubmissionNote(e.target.value)}
-              className="w-full p-2.5 border border-stone-300 rounded-lg text-xs text-stone-900"
+              disabled={isSubmittingWork}
+              className="w-full p-2.5 border border-stone-300 rounded-lg text-xs text-stone-900 disabled:bg-stone-100"
             />
             <div className="flex justify-end gap-2 pt-2">
               <button
+                disabled={isSubmittingWork}
                 onClick={() => setIsSubmitModalOpen(false)}
-                className="px-3.5 py-1.5 text-xs text-stone-600 bg-stone-100 rounded-lg"
+                className="px-3.5 py-1.5 text-xs text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-lg cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
+                disabled={isSubmittingWork}
                 onClick={async () => {
-                  await submitTask(task.id, submissionNote.trim() || undefined);
-                  setIsSubmitModalOpen(false);
-                  setSubmissionNote('');
+                  if (isSubmittingWork) return;
+                  setIsSubmittingWork(true);
+                  try {
+                    await submitTask(task.id, submissionNote.trim() || undefined);
+                    setIsSubmitModalOpen(false);
+                    setSubmissionNote('');
+                  } finally {
+                    setIsSubmittingWork(false);
+                  }
                 }}
-                className="px-4 py-1.5 text-xs text-white bg-[#4A154B] hover:bg-[#3B0F3C] font-semibold rounded-lg"
+                className="flex items-center gap-1.5 px-4 py-1.5 text-xs text-white bg-[#4A154B] hover:bg-[#3B0F3C] font-semibold rounded-lg cursor-pointer disabled:opacity-50"
               >
-                Submit Work
+                {isSubmittingWork ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Submitting Work...</span>
+                  </>
+                ) : (
+                  <span>Submit Work</span>
+                )}
               </button>
             </div>
           </div>
@@ -805,25 +918,40 @@ export default function TaskDetailPage() {
               placeholder="e.g. Please add error handling for edge cases..."
               value={changesReason}
               onChange={e => setChangesReason(e.target.value)}
-              className="w-full p-2.5 border border-stone-300 rounded-lg text-xs text-stone-900"
+              disabled={isRequestingChanges}
+              className="w-full p-2.5 border border-stone-300 rounded-lg text-xs text-stone-900 disabled:bg-stone-100"
             />
             <div className="flex justify-end gap-2 pt-2">
               <button
+                disabled={isRequestingChanges}
                 onClick={() => setIsChangesModalOpen(false)}
-                className="px-3.5 py-1.5 text-xs text-stone-600 bg-stone-100 rounded-lg"
+                className="px-3.5 py-1.5 text-xs text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-lg cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
+                disabled={isRequestingChanges || !changesReason.trim()}
                 onClick={async () => {
-                  if (!changesReason.trim()) return;
-                  await requestChanges(task.id, changesReason.trim());
-                  setIsChangesModalOpen(false);
-                  setChangesReason('');
+                  if (!changesReason.trim() || isRequestingChanges) return;
+                  setIsRequestingChanges(true);
+                  try {
+                    await requestChanges(task.id, changesReason.trim());
+                    setIsChangesModalOpen(false);
+                    setChangesReason('');
+                  } finally {
+                    setIsRequestingChanges(false);
+                  }
                 }}
-                className="px-4 py-1.5 text-xs text-white bg-rose-800 hover:bg-rose-900 font-semibold rounded-lg"
+                className="flex items-center gap-1.5 px-4 py-1.5 text-xs text-white bg-rose-800 hover:bg-rose-900 font-semibold rounded-lg cursor-pointer disabled:opacity-50"
               >
-                Send Revision Request
+                {isRequestingChanges ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Sending Revision Request...</span>
+                  </>
+                ) : (
+                  <span>Send Revision Request</span>
+                )}
               </button>
             </div>
           </div>

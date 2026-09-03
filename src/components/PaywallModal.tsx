@@ -36,7 +36,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   isOpen,
   onClose,
   title = 'Unlock Trinetra Pro',
-  subtitle = 'Create unlimited projects, add unlimited team members, and export comprehensive 7-sheet Excel audit reports.',
+  subtitle = 'Create unlimited projects, add unlimited team members, and export comprehensive 8-sheet Excel audit reports.',
   highlightedFeature = 'GENERAL',
 }) => {
   const { currentUser, refreshData } = useTrinetra();
@@ -439,7 +439,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>Complete 7-Sheet Excel Audits</span>
+                <span>Complete 8-Sheet Excel Audits</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />

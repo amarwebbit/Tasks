@@ -17,6 +17,7 @@ import {
   Download,
   Check
 } from 'lucide-react';
+import { toFriendlyError } from '@/lib/friendlyError';
 
 interface BulkUploadModalProps {
   isOpen: boolean;
@@ -355,7 +356,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
 
       const res = await createTasksBulk(projectId, tasksToInsert);
       if (!res.success) {
-        setError(res.error || 'Failed to import tasks.');
+        setError(toFriendlyError(res.error, 'Failed to import tasks. Please try again.'));
         setIsSubmitting(false);
         return;
       }
@@ -365,7 +366,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
         onClose();
       }, 1000);
     } catch (err: any) {
-      setError(err?.message || 'An error occurred during import.');
+      setError(toFriendlyError(err, 'An error occurred during import. Please try again.'));
       setIsSubmitting(false);
     }
   };

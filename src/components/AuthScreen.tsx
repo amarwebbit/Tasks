@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useTrinetra } from '@/lib/store';
 import { KeyRound, User, Mail, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { toFriendlyError } from '@/lib/friendlyError';
 
 export const AuthScreen: React.FC = () => {
   const { isConfigured, signIn, signUp } = useTrinetra();
@@ -29,7 +30,7 @@ export const AuthScreen: React.FC = () => {
         }
         const res = await signUp(email.trim(), password, fullName.trim());
         if (!res.success) {
-          setError(res.error || 'Failed to create account.');
+          setError(toFriendlyError(res.error, 'Failed to create account. Please try again.'));
         } else {
           setCreatedAccount(email.trim());
           setIsSignUp(false); // switch to sign in view
@@ -37,11 +38,11 @@ export const AuthScreen: React.FC = () => {
       } else {
         const res = await signIn(email.trim(), password);
         if (!res.success) {
-          setError(res.error || 'Invalid email or password.');
+          setError(toFriendlyError(res.error, 'Invalid email or password.'));
         }
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Authentication failed.');
+      setError(toFriendlyError(err, 'Authentication failed. Please check your details and try again.'));
     } finally {
       setIsLoading(false);
     }

@@ -27,7 +27,7 @@ export default function MyTasksPage() {
       />
 
       <div className="p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6">
-        <div className="p-4 bg-white border border-[#E8E2D5] rounded-xl flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between shadow-2xs">
+        <div data-tour="my-tasks-header" className="p-4 bg-white border border-[#E8E2D5] rounded-xl flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between shadow-2xs">
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-stone-500">Filter by status:</span>
             <select
