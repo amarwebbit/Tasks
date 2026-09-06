@@ -78,7 +78,59 @@ export async function POST(
       .in('commit_sha', commit_shas)
       .select();
 
-    if (error) throw error;
+    // If any linked commit doesn't have file changes yet, fetch them from GitHub
+    if (updatedCommits && updatedCommits.length > 0) {
+      try {
+        const projectId = updatedCommits[0].project_id;
+        const { data: settings } = await supabase
+          .from('project_github_settings')
+          .select('repo_full_name, github_token')
+          .eq('project_id', projectId)
+          .maybeSingle();
+
+        if (settings?.repo_full_name) {
+          const headers: Record<string, string> = {
+            Accept: 'application/vnd.github.v3+json',
+            'User-Agent': 'Trinetra-Tasks-App',
+          };
+          const token = settings.github_token || req.cookies.get('gh_token')?.value || process.env.GITHUB_CLIENT_SECRET;
+          if (token) headers['Authorization'] = `token ${token}`;
+
+          for (const c of updatedCommits) {
+            const { count } = await supabase
+              .from('task_commit_file_changes')
+              .select('*', { count: 'exact', head: true })
+              .eq('commit_id', c.id);
+
+            if (!count || count === 0) {
+              const res = await fetch(`https://api.github.com/repos/${settings.repo_full_name}/commits/${c.commit_sha}`, { headers });
+              if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data.files) && data.files.length > 0) {
+                  const payload = data.files.map((f: any) => ({
+                    commit_id: c.id,
+                    filename: f.filename,
+                    status: f.status || 'modified',
+                    additions: f.additions || 0,
+                    deletions: f.deletions || 0,
+                    patch: f.patch || null,
+                  }));
+                  await supabase.from('task_commit_file_changes').insert(payload);
+
+                  await supabase.from('task_commits').update({
+                    total_additions: data.stats?.additions || 0,
+                    total_deletions: data.stats?.deletions || 0,
+                    files_count: data.files.length,
+                  }).eq('id', c.id);
+                }
+              }
+            }
+          }
+        }
+      } catch (diffErr) {
+        console.warn('Failed fetching diff for manually linked commit:', diffErr);
+      }
+    }
 
     // Add activity log
     await supabase.from('task_activity').insert({

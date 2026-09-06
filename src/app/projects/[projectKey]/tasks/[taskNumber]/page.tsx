@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTrinetra } from '@/lib/store';
@@ -31,11 +31,13 @@ import {
   GitCommit,
   Loader2,
   Download,
+  HelpCircle,
 } from 'lucide-react';
 import { TaskComment } from '@/types/database';
 import TaskCodeChangesTab from '@/components/github/TaskCodeChangesTab';
 import LinkPushedCodeModal from '@/components/github/LinkPushedCodeModal';
 import GitHubProjectSettingsModal from '@/components/github/GitHubProjectSettingsModal';
+import GitHubHowItWorksModal from '@/components/github/GitHubHowItWorksModal';
 import { GitBranch, Code2 } from 'lucide-react';
 
 export default function TaskDetailPage() {
@@ -86,11 +88,29 @@ export default function TaskDetailPage() {
   const [isGitHubSettingsOpen, setIsGitHubSettingsOpen] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
   const [taskCommitsRefreshKey, setTaskCommitsRefreshKey] = useState(0);
+  const [isGitHubHowItWorksOpen, setIsGitHubHowItWorksOpen] = useState(false);
+  const [projectGitHubInfo, setProjectGitHubInfo] = useState<{ repo_full_name?: string; webhook_secret?: string } | null>(null);
 
   const project = projects.find(p => p.project_key === projectKey);
   const task = tasks.find(
     t => t.project_id === project?.id && t.task_number === taskNumber
   );
+
+  useEffect(() => {
+    if (project?.id) {
+      fetch(`/api/projects/${project.id}/github`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.connected) {
+            setProjectGitHubInfo({
+              repo_full_name: data.repo_full_name,
+              webhook_secret: data.webhook_secret,
+            });
+          }
+        })
+        .catch(err => console.error('Failed loading project github info:', err));
+    }
+  }, [project?.id]);
 
   if (!project || !task) {
     return (
@@ -554,13 +574,21 @@ export default function TaskDetailPage() {
 
             {/* Code Changes & Diff Logs Section */}
             <div className="bg-white border border-[#E8E2D5] rounded-xl p-6 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Code2 className="w-4 h-4 text-purple-900" />
                   <h3 className="text-xs font-bold uppercase tracking-wider text-stone-800">
                     GitHub Code Changes & Side-by-Side Diffs
                   </h3>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setIsGitHubHowItWorksOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 transition-colors cursor-pointer shadow-2xs"
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-red-600" />
+                  <span>How this Works ?</span>
+                </button>
               </div>
 
               <TaskCodeChangesTab
@@ -987,6 +1015,16 @@ export default function TaskDetailPage() {
         projectKey={project.project_key}
         isOpen={isGitHubSettingsOpen}
         onClose={() => setIsGitHubSettingsOpen(false)}
+      />
+
+      {/* MODAL: GITHUB HOW THIS WORKS GUIDE */}
+      <GitHubHowItWorksModal
+        isOpen={isGitHubHowItWorksOpen}
+        onClose={() => setIsGitHubHowItWorksOpen(false)}
+        projectKey={project.project_key}
+        taskNumber={task.task_number}
+        repoFullName={projectGitHubInfo?.repo_full_name}
+        webhookSecret={projectGitHubInfo?.webhook_secret}
       />
     </div>
   );
