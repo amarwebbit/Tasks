@@ -148,7 +148,20 @@ export default function GitHubProjectSettingsModal({
       setConnected(true);
       setRepoFullName(selectedRepo.full_name);
       setWebhookSecret(data.settings?.webhook_secret || '');
-      setSuccessMsg(`Successfully connected to ${selectedRepo.full_name}!`);
+      setSuccessMsg(`Successfully connected to ${selectedRepo.full_name}! Syncing commits...`);
+
+      // Auto-sync commits from GitHub
+      try {
+        const syncRes = await fetch(`/api/projects/${projectId}/github/sync-commits`, { method: 'POST' });
+        const syncData = await syncRes.json();
+        if (syncRes.ok) {
+          setSuccessMsg(`Successfully connected to ${selectedRepo.full_name}! Imported ${syncData.synced_count || 0} commit(s).`);
+        } else {
+          setSuccessMsg(`Successfully connected to ${selectedRepo.full_name}!`);
+        }
+      } catch (_) {
+        setSuccessMsg(`Successfully connected to ${selectedRepo.full_name}!`);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error connecting repository';
       setError(msg);

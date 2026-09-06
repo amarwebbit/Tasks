@@ -107,6 +107,43 @@ export async function POST(
       console.warn('Could not verify GitHub repo connectivity:', checkErr);
     }
 
+    // Auto-create webhook on GitHub if token is available
+    let webhookCreated = false;
+    if (effectiveToken) {
+      try {
+        const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
+        const appUrl = rawAppUrl.startsWith('http') ? rawAppUrl : `https://${rawAppUrl}`;
+        const webhookUrl = `${appUrl.replace(/\/$/, '')}/api/webhooks/github`;
+
+        const hookRes = await fetch(`https://api.github.com/repos/${cleanRepoName}/hooks`, {
+          method: 'POST',
+          headers: {
+            Authorization: `token ${effectiveToken}`,
+            Accept: 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Trinetra-Tasks-App',
+          },
+          body: JSON.stringify({
+            name: 'web',
+            active: true,
+            events: ['push', 'pull_request'],
+            config: {
+              url: webhookUrl,
+              content_type: 'json',
+              secret: webhookSecret,
+              insecure_ssl: '0',
+            },
+          }),
+        });
+
+        if (hookRes.ok || hookRes.status === 422) {
+          webhookCreated = true;
+        }
+      } catch (hookErr) {
+        console.warn('Auto-create webhook notice:', hookErr);
+      }
+    }
+
     const { data: updated, error } = await supabase
       .from('project_github_settings')
       .upsert(
@@ -114,7 +151,7 @@ export async function POST(
           project_id: projectId,
           repo_full_name: cleanRepoName,
           webhook_secret: webhookSecret,
-          github_token: github_token ? github_token.trim() : null,
+          github_token: effectiveToken,
           default_branch: default_branch || 'main',
           is_active: true,
           updated_at: new Date().toISOString(),
@@ -128,6 +165,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
+      webhook_created: webhookCreated,
       settings: {
         id: updated.id,
         repo_full_name: updated.repo_full_name,
