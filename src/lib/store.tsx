@@ -80,7 +80,8 @@ interface TrinetraContextType {
     can_assign_tasks: boolean;
   }) => Promise<{ success: boolean; error?: string }>;
 
-  acceptInvitation: (token: string) => Promise<{ success: boolean; error?: string }>;
+  acceptInvitation: (token: string) => Promise<{ success: boolean; projectKey?: string; error?: string }>;
+  declineInvitation: (token: string) => Promise<{ success: boolean; error?: string }>;
   cancelInvitation: (invitationId: string) => Promise<{ success: boolean; error?: string }>;
 
   // Task Engine & Status Lifecycle
@@ -207,32 +208,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
       // Fetch All Profiles (for enriching accessible tasks, projects, and activities)
       const { data: allProfiles } = await supabase.from('profiles').select('*');
 
-      // Auto-accept any pending invitations for current user email
-      if (user.email) {
-        const { data: pendingInvs } = await supabase
-          .from('invitations')
-          .select('*')
-          .ilike('email', user.email)
-          .eq('status', 'INVITED');
-
-        if (pendingInvs && pendingInvs.length > 0) {
-          for (const inv of pendingInvs) {
-            await supabase.from('project_members').upsert({
-              project_id: inv.project_id,
-              user_id: user.id,
-              role: inv.role,
-              can_receive_tasks: inv.can_receive_tasks,
-              can_assign_tasks: inv.can_assign_tasks,
-              status: 'ACTIVE',
-            }, { onConflict: 'project_id,user_id' });
-
-            await supabase.from('invitations').update({
-              status: 'ACCEPTED',
-              accepted_at: new Date().toISOString(),
-            }).eq('id', inv.id);
-          }
-        }
-      }
+      // Pending invitations are kept in INVITED state until explicitly accepted by user via link or invite modal
 
       // 1. Fetch User's Accessible Organizations
       const { data: myOrgMembers } = await supabase
@@ -397,24 +373,36 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
         .order('created_at', { ascending: false });
       if (notifList) setNotifications(notifList);
 
-      // 7. Fetch Invitations for accessible projects
+      // 7. Fetch Invitations for accessible projects + pending invitations for current user email
+      const combinedInvList: any[] = [];
       if (accessibleProjectIds.length > 0) {
         const { data: invList } = await supabase
           .from('invitations')
           .select('*')
           .in('project_id', accessibleProjectIds)
           .order('created_at', { ascending: false });
-        if (invList) {
-          setInvitations(invList.map(inv => ({
-            ...inv,
-            project: accessibleProjects.find(p => p.id === inv.project_id),
-          })));
-        } else {
-          setInvitations([]);
-        }
-      } else {
-        setInvitations([]);
+        if (invList) combinedInvList.push(...invList);
       }
+
+      if (user.email) {
+        const { data: myPendingInvs } = await supabase
+          .from('invitations')
+          .select('*')
+          .ilike('email', user.email)
+          .eq('status', 'INVITED');
+        if (myPendingInvs) {
+          for (const mi of myPendingInvs) {
+            if (!combinedInvList.some(ci => ci.id === mi.id)) {
+              combinedInvList.push(mi);
+            }
+          }
+        }
+      }
+
+      setInvitations(combinedInvList.map(inv => ({
+        ...inv,
+        project: allProjs?.find(p => p.id === inv.project_id) || accessibleProjects.find(p => p.id === inv.project_id),
+      })));
 
       // 8. Filter visible users strictly to current user + members sharing at least 1 accessible project
       const sharedUserIds = new Set<string>([
@@ -780,50 +768,91 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
     const effectiveCanAssign = isLeader ? true : can_assign_tasks;
     const effectiveCanReceive = isLeader ? true : can_receive_tasks;
 
-    const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
+    const trimmedEmail = email.toLowerCase().trim();
+
+    // Check if user is ALREADY an ACTIVE member of this project
+    const existingUser = users.find(u => u.email.toLowerCase() === trimmedEmail);
     if (existingUser) {
       const alreadyMember = projectMembers.some(pm => pm.project_id === projectId && pm.user_id === existingUser.id && pm.status === 'ACTIVE');
-      if (alreadyMember) return { success: false, error: `${existingUser.full_name} is already a member of this project.` };
-
-      await supabase.from('project_members').upsert({
-        project_id: projectId,
-        user_id: existingUser.id,
-        role,
-        can_receive_tasks: effectiveCanReceive,
-        can_assign_tasks: effectiveCanAssign,
-        status: 'ACTIVE',
-      }, { onConflict: 'project_id,user_id' });
-
-      await refreshData();
-      return { success: true };
+      if (alreadyMember) return { success: false, error: `${existingUser.full_name || email} is already an active member of this project.` };
+    } else {
+      const alreadyMemberByEmail = projectMembers.some(pm => pm.project_id === projectId && pm.profile?.email?.toLowerCase() === trimmedEmail && pm.status === 'ACTIVE');
+      if (alreadyMemberByEmail) return { success: false, error: `${email} is already an active member of this project.` };
     }
 
-    const { data: inv, error } = await supabase.from('invitations').insert({
-      organization_id: project.organization_id,
-      project_id: projectId,
-      email: email.trim(),
-      role,
-      can_receive_tasks: effectiveCanReceive,
-      can_assign_tasks: effectiveCanAssign,
-      invited_by: currentUser.id,
-      status: 'INVITED',
-    }).select().single();
+    // Check if an invitation is ALREADY pending for this email in this project
+    const { data: existingInvite } = await supabase
+      .from('invitations')
+      .select('*')
+      .eq('project_id', projectId)
+      .ilike('email', trimmedEmail)
+      .eq('status', 'INVITED')
+      .maybeSingle();
 
-    if (error) return { success: false, error: toFriendlyError(error) };
+    let inv = existingInvite;
 
-    // Server-side email notification
+    if (!inv) {
+      const { data: newInv, error: invError } = await supabase
+        .from('invitations')
+        .insert({
+          organization_id: project.organization_id,
+          project_id: projectId,
+          email: trimmedEmail,
+          role,
+          can_receive_tasks: effectiveCanReceive,
+          can_assign_tasks: effectiveCanAssign,
+          invited_by: currentUser.id,
+          status: 'INVITED',
+        })
+        .select()
+        .single();
+
+      if (invError) return { success: false, error: toFriendlyError(invError) };
+      inv = newInv;
+    } else {
+      // Update role & permissions if changed
+      const { data: updatedInv } = await supabase
+        .from('invitations')
+        .update({
+          role,
+          can_receive_tasks: effectiveCanReceive,
+          can_assign_tasks: effectiveCanAssign,
+          invited_by: currentUser.id,
+        })
+        .eq('id', inv.id)
+        .select()
+        .single();
+
+      if (updatedInv) inv = updatedInv;
+    }
+
+    // Server-side email notification with acceptance link
+    const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://task.trinetraedu-ai.com';
+    const inviteUrl = `${appOrigin}/invitation/${inv.token}`;
     await dispatchEmailNotification({
       type: 'INVITATION',
-      to: email.trim(),
+      to: trimmedEmail,
       projectId,
       data: {
-        recipientEmail: email.trim(),
+        recipientEmail: trimmedEmail,
         projectName: project.name,
         inviterName: currentUser.full_name,
         role,
-        inviteUrl: `${window.location.origin}/invitation/${inv.token}`,
+        inviteUrl,
       },
     });
+
+    // In-app notification if user already exists
+    if (existingUser) {
+      await supabase.from('notifications').insert({
+        user_id: existingUser.id,
+        project_id: projectId,
+        title: `Project Invitation: ${project.name}`,
+        message: `${currentUser.full_name} invited you to join "${project.name}" as ${role}. Click here to view and accept.`,
+        link: `/invitation/${inv.token}`,
+        type: 'INVITATION',
+      });
+    }
 
     await refreshData();
     return { success: true };
@@ -832,8 +861,18 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
   // 9. Accept Invitation
   const acceptInvitation = async (token: string) => {
     if (!supabase || !currentUser) return { success: false, error: 'Not authenticated' };
-    const { data: invite } = await supabase.from('invitations').select('*').eq('token', token).eq('status', 'INVITED').single();
+    const { data: invite } = await supabase
+      .from('invitations')
+      .select('*, projects!inner(id, project_key, name)')
+      .eq('token', token)
+      .eq('status', 'INVITED')
+      .maybeSingle();
+
     if (!invite) return { success: false, error: 'Invalid or expired invitation token.' };
+
+    if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+      return { success: false, error: 'This invitation has expired.' };
+    }
 
     await supabase.from('project_members').upsert({
       project_id: invite.project_id,
@@ -848,6 +887,17 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
       status: 'ACCEPTED',
       accepted_at: new Date().toISOString(),
     }).eq('id', invite.id);
+
+    await refreshData();
+    return { success: true, projectKey: invite.projects?.project_key };
+  };
+
+  // Decline Invitation
+  const declineInvitation = async (token: string) => {
+    if (!supabase) return { success: false, error: 'Not configured' };
+    await supabase.from('invitations').update({
+      status: 'DECLINED',
+    }).eq('token', token);
 
     await refreshData();
     return { success: true };
@@ -1450,6 +1500,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
         removeProjectMember,
         inviteMember,
         acceptInvitation,
+        declineInvitation,
         cancelInvitation,
 
         createTask,

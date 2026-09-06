@@ -30,6 +30,7 @@ import {
   Trash2,
   UserMinus,
   XCircle,
+  Copy,
   Lock,
   Sparkles,
   Loader2,
@@ -75,6 +76,7 @@ export default function ProjectDetailPage() {
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
   const [isProjectTourOpen, setIsProjectTourOpen] = useState(false);
+  const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
 
   const project = projects.find(p => p.project_key === projectKey);
 
@@ -789,21 +791,48 @@ export default function ProjectDetailPage() {
                           {new Date(inv.created_at).toLocaleDateString()}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          {canManage && (
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                if (window.confirm(`Cancel invitation for ${inv.email}?`)) {
-                                  const res = await cancelInvitation(inv.id);
-                                  if (!res.success) alert(res.error || 'Failed to cancel invitation');
-                                }
-                              }}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer"
-                            >
-                              <XCircle className="w-3.5 h-3.5" />
-                              <span>Cancel</span>
-                            </button>
-                          )}
+                          <div className="flex items-center justify-end gap-2">
+                            {inv.token && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const url = `${window.location.origin}/invitation/${inv.token}`;
+                                  navigator.clipboard.writeText(url);
+                                  setCopiedInviteId(inv.id);
+                                  setTimeout(() => setCopiedInviteId(null), 2000);
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 transition-colors cursor-pointer"
+                                title="Copy invitation link"
+                              >
+                                {copiedInviteId === inv.id ? (
+                                  <>
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span className="text-emerald-700">Copied!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3.5 h-3.5" />
+                                    <span>Copy Link</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
+                            {canManage && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (window.confirm(`Cancel invitation for ${inv.email}?`)) {
+                                    const res = await cancelInvitation(inv.id);
+                                    if (!res.success) alert(res.error || 'Failed to cancel invitation');
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer"
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                                <span>Cancel</span>
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

@@ -242,10 +242,49 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
     setPasteText('');
   };
 
-  const handleFileUpload = (file: File) => {
+  const handleFileUpload = async (file: File) => {
     setFileError(null);
-    if (!file.name.endsWith('.csv')) {
-      setFileError('Only standard CSV files are supported.');
+    const fileName = file.name.toLowerCase();
+
+    if (!fileName.endsWith('.csv') && !fileName.endsWith('.xlsx') && !fileName.endsWith('.xls')) {
+      setFileError('Please upload a valid CSV (.csv) or Excel (.xlsx) file.');
+      return;
+    }
+
+    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+      try {
+        const ExcelJS = await import('exceljs');
+        const workbook = new ExcelJS.Workbook();
+        const buffer = await file.arrayBuffer();
+        await workbook.xlsx.load(buffer);
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) {
+          setFileError('The Excel file appears to be empty.');
+          return;
+        }
+
+        const rows: string[][] = [];
+        worksheet.eachRow({ includeEmpty: false }, (row) => {
+          const values: string[] = [];
+          row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            const raw = cell.text || (cell.value !== null && cell.value !== undefined ? String(cell.value) : '');
+            values[colNumber - 1] = raw.trim();
+          });
+          if (values.some(v => v !== '')) {
+            rows.push(values);
+          }
+        });
+
+        if (rows.length === 0) {
+          setFileError('No readable rows found in the uploaded Excel worksheet.');
+          return;
+        }
+
+        processImportData(rows);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Error reading Excel file';
+        setFileError(`Failed to parse Excel file: ${msg}`);
+      }
       return;
     }
 
@@ -256,7 +295,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
       processImportData(rows);
     };
     reader.onerror = () => {
-      setFileError('Error reading file.');
+      setFileError('Error reading CSV file.');
     };
     reader.readAsText(file);
   };
@@ -411,28 +450,37 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
           {previewTasks.length === 0 ? (
             /* Input Phase */
             <div className="space-y-4">
-              <div className="flex border-b border-stone-200">
+              <div className="flex items-center border-b border-stone-200">
                 <button
+                  type="button"
                   onClick={() => { setActiveTab('paste'); setFileError(null); }}
-                  className={`px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                  className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
                     activeTab === 'paste'
                       ? 'border-purple-950 text-purple-950'
-                      : 'border-transparent text-stone-500 hover:text-stone-700'
+                      : 'border-transparent text-stone-500 hover:text-stone-800'
                   }`}
                 >
-                  <FileText className="w-3.5 h-3.5 inline mr-1.5" />
-                  Paste Tasks List
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Paste Tasks List</span>
                 </button>
+
+                <div className="flex items-center px-3 select-none">
+                  <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-stone-500 bg-stone-100 rounded-full border border-stone-200">
+                    OR
+                  </span>
+                </div>
+
                 <button
+                  type="button"
                   onClick={() => { setActiveTab('file'); setFileError(null); }}
-                  className={`px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                  className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
                     activeTab === 'file'
                       ? 'border-purple-950 text-purple-950'
-                      : 'border-transparent text-stone-500 hover:text-stone-700'
+                      : 'border-transparent text-stone-500 hover:text-stone-800'
                   }`}
                 >
-                  <Upload className="w-3.5 h-3.5 inline mr-1.5" />
-                  Upload CSV File
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload Excel / CSV File</span>
                 </button>
               </div>
 
@@ -486,7 +534,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
                       type="file"
                       ref={fileInputRef}
                       onChange={handleFileChange}
-                      accept=".csv"
+                      accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, text/csv"
                       className="hidden"
                     />
                     <div className="flex flex-col items-center gap-3">
@@ -494,7 +542,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
                         <Upload className="w-6 h-6" />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-stone-900">Drag & Drop CSV File here</p>
+                        <p className="text-sm font-bold text-stone-900">Drag & Drop Excel (.xlsx) or CSV File here</p>
                         <p className="text-xs text-stone-500 mt-1">or click to browse your local filesystem</p>
                       </div>
                     </div>

@@ -1,18 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  GitBranch, 
-  Copy, 
-  Check, 
-  ShieldCheck, 
-  RefreshCw, 
-  Link2, 
-  AlertCircle, 
-  Lock, 
-  Globe, 
-  Trash2, 
-  Search, 
+import {
+  GitBranch,
+  Copy,
+  Check,
+  ShieldCheck,
+  RefreshCw,
+  Link2,
+  AlertCircle,
+  Lock,
+  Globe,
+  Trash2,
+  Search,
   CheckCircle2,
   X,
   ExternalLink
@@ -53,7 +53,7 @@ export default function GitHubProjectSettingsModal({
   const [repoFullName, setRepoFullName] = useState('');
   const [defaultBranch, setDefaultBranch] = useState('main');
   const [webhookSecret, setWebhookSecret] = useState('');
-  
+
   // 1-Click OAuth state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRepos, setUserRepos] = useState<GitHubRepo[]>([]);
@@ -65,8 +65,8 @@ export default function GitHubProjectSettingsModal({
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const webhookUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}/api/webhooks/github` 
+  const webhookUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/api/webhooks/github`
     : 'https://yourdomain.com/api/webhooks/github';
 
   // Fetch current project GitHub connection settings
@@ -74,7 +74,7 @@ export default function GitHubProjectSettingsModal({
     try {
       setLoading(true);
       setError(null);
-      
+
       const res = await fetch(`/api/projects/${projectId}/github`);
       const data = await res.json();
 
@@ -229,7 +229,7 @@ export default function GitHubProjectSettingsModal({
     }
   };
 
-  const filteredRepos = userRepos.filter(r => 
+  const filteredRepos = userRepos.filter(r =>
     r.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (r.description && r.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -239,7 +239,7 @@ export default function GitHubProjectSettingsModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="bg-white border border-stone-200 rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        
+
         {/* Header */}
         <div className="px-6 py-4 bg-stone-50/70 border-b border-stone-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -267,17 +267,15 @@ export default function GitHubProjectSettingsModal({
         {/* Body */}
         <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
           {error && (
-            <div className={`p-4 rounded-xl text-xs ${
-              error.toLowerCase().includes('credential') || error.toLowerCase().includes('expired') || error.toLowerCase().includes('reconnect')
-                ? 'bg-amber-50 border border-amber-200 text-amber-900'
-                : 'bg-red-50 border border-red-200 text-red-800'
-            }`}>
+            <div className={`p-4 rounded-xl text-xs ${error.toLowerCase().includes('credential') || error.toLowerCase().includes('expired') || error.toLowerCase().includes('reconnect')
+              ? 'bg-amber-50 border border-amber-200 text-amber-900'
+              : 'bg-red-50 border border-red-200 text-red-800'
+              }`}>
               <div className="flex items-start gap-2.5">
-                <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${
-                  error.toLowerCase().includes('credential') || error.toLowerCase().includes('expired') || error.toLowerCase().includes('reconnect')
-                    ? 'text-amber-600'
-                    : 'text-red-600'
-                }`} />
+                <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${error.toLowerCase().includes('credential') || error.toLowerCase().includes('expired') || error.toLowerCase().includes('reconnect')
+                  ? 'text-amber-600'
+                  : 'text-red-600'
+                  }`} />
                 <div className="space-y-1.5 flex-1">
                   <div className="font-bold text-xs">
                     {error.toLowerCase().includes('credential') || error.toLowerCase().includes('expired')
@@ -505,11 +503,10 @@ export default function GitHubProjectSettingsModal({
                           <div
                             key={repo.id}
                             onClick={() => setSelectedRepo(repo)}
-                            className={`p-3 cursor-pointer flex items-center justify-between gap-3 transition ${
-                              isSelected
-                                ? 'bg-purple-50 text-[#4A154B] border-l-2 border-[#4A154B]'
-                                : 'hover:bg-stone-50 text-stone-800'
-                            }`}
+                            className={`p-3 cursor-pointer flex items-center justify-between gap-3 transition ${isSelected
+                              ? 'bg-purple-50 text-[#4A154B] border-l-2 border-[#4A154B]'
+                              : 'hover:bg-stone-50 text-stone-800'
+                              }`}
                           >
                             <div className="flex items-center gap-3 min-w-0">
                               <div className="w-7 h-7 rounded-full bg-stone-100 border border-stone-200 overflow-hidden shrink-0 flex items-center justify-center font-bold text-xs text-[#4A154B]">
@@ -538,9 +535,8 @@ export default function GitHubProjectSettingsModal({
                               </div>
                             </div>
 
-                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition ${
-                              isSelected ? 'bg-[#4A154B] border-[#4A154B] text-white' : 'border-stone-300 bg-white'
-                            }`}>
+                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition ${isSelected ? 'bg-[#4A154B] border-[#4A154B] text-white' : 'border-stone-300 bg-white'
+                              }`}>
                               {isSelected && <Check className="w-3 h-3" />}
                             </div>
                           </div>

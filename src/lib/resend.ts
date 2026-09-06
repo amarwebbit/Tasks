@@ -263,19 +263,50 @@ export function generateInvitationEmail({
   inviteUrl: string;
 }) {
   return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #FBF9F5; color: #1F1D1A; border: 1px solid #E8E2D5; border-radius: 8px;">
-      <div style="padding-bottom: 16px; border-bottom: 2px solid #4A154B; margin-bottom: 20px;">
-        <span style="font-size: 13px; font-weight: bold; color: #4A154B; text-transform: uppercase; letter-spacing: 0.5px;">Trinetra Project Invitation</span>
-        <h2 style="margin: 6px 0 0 0; color: #1F1D1A; font-size: 20px;">Join "${projectName}"</h2>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; background: #0E0C12; color: #F5F5F4; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
+      <div style="text-align: center; padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <div style="display: inline-block; background: linear-gradient(135deg, #9333EA, #4A154B); color: #FFF; font-weight: 900; font-size: 13px; padding: 6px 14px; border-radius: 8px; margin-bottom: 12px; letter-spacing: 0.5px;">PROJECT INVITATION</div>
+        <h1 style="margin: 0; font-size: 22px; color: #FFFFFF; font-weight: 800;">You're invited to join "${projectName}"</h1>
+        <p style="margin: 6px 0 0 0; font-size: 13px; color: #A8A29E;">Invited by <strong style="color: #FFFFFF;">${inviterName}</strong></p>
       </div>
-      <p>Hello,</p>
-      <p><strong>${inviterName}</strong> has invited you to join the <strong>${projectName}</strong> project as a <strong>${role}</strong>.</p>
-      
-      <div style="margin: 24px 0;">
-        <a href="${inviteUrl}" style="background-color: #4A154B; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 15px; display: inline-block;">Accept Invitation</a>
+
+      <div style="padding: 24px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: #D6D3D1;">Hello,</p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: #D6D3D1; line-height: 1.6;">
+          <strong>${inviterName}</strong> has invited you (${recipientEmail}) to collaborate on <strong>${projectName}</strong> as a <strong>${role}</strong> on Trinetra Tasks.
+        </p>
+
+        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 18px; margin: 20px 0;">
+          <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 6px 0; color: #A8A29E;">Project Name:</td>
+              <td style="padding: 6px 0; color: #FFFFFF; font-weight: bold; text-align: right;">${projectName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #A8A29E;">Assigned Role:</td>
+              <td style="padding: 6px 0; color: #C084FC; font-weight: bold; text-align: right;">${role}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #A8A29E;">Action Required:</td>
+              <td style="padding: 6px 0; color: #FBBF24; font-weight: bold; text-align: right;">Acceptance Needed</td>
+            </tr>
+          </table>
+        </div>
+
+        <p style="font-size: 13px; color: #A8A29E; line-height: 1.6; margin: 0 0 20px 0;">
+          To protect your workflow, you will only be added to the project workspace once you review and accept this invitation.
+        </p>
+
+        <div style="text-align: center; padding: 12px 0;">
+          <a href="${inviteUrl}" style="background: linear-gradient(135deg, #9333EA, #7E22CE); color: #FFFFFF; text-decoration: none; padding: 14px 36px; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(147, 51, 234, 0.4);">
+            Accept Invitation & Join Project →
+          </a>
+        </div>
       </div>
-      <p style="font-size: 13px; color: #5C564E;">If you do not have an account yet, you will be prompted to create one and will automatically join the project.</p>
-      <p style="font-size: 12px; color: #8A8275; margin-top: 32px; border-top: 1px solid #E8E2D5; padding-top: 12px;">Trinetra Multi-Project Task Management</p>
+
+      <p style="text-align: center; font-size: 11px; color: #78716C; margin: 16px 0 0 0;">
+        Trinetra Tasks • task.trinetraedu-ai.com • If you did not expect this invitation, you can ignore or decline it.
+      </p>
     </div>
   `;
 }

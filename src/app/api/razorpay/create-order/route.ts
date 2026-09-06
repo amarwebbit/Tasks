@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+const getAdminSupabase = () => {
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,31 +24,42 @@ export async function POST(req: NextRequest) {
     let discountAmount = 0;
     let appliedCoupon: any = null;
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = getAdminSupabase();
 
     // Validate coupon code if provided
-    if (couponCode && couponCode.trim()) {
+    if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
       const cleanCode = couponCode.trim().toUpperCase();
       const { data: coupon, error: couponErr } = await supabase
         .from('coupons')
         .select('*')
         .eq('code', cleanCode)
-        .single();
+        .maybeSingle();
 
-      if (coupon && coupon.is_active) {
-        const isNotExpired = !coupon.expires_at || new Date(coupon.expires_at) > new Date();
-        const hasUsesLeft = coupon.max_uses > coupon.used_count;
-
-        if (isNotExpired && hasUsesLeft) {
-          appliedCoupon = coupon;
-          if (coupon.discount_type === 'PERCENTAGE') {
-            discountAmount = Math.round((basePrice * coupon.discount_value) / 100);
-          } else {
-            discountAmount = Math.min(basePrice, coupon.discount_value);
-          }
-          finalPrice = Math.max(0, basePrice - discountAmount);
-        }
+      if (couponErr || !coupon) {
+        return NextResponse.json({ error: `Coupon code "${cleanCode}" is invalid.` }, { status: 400 });
       }
+
+      if (!coupon.is_active) {
+        return NextResponse.json({ error: `Coupon code "${cleanCode}" is no longer active.` }, { status: 400 });
+      }
+
+      const isExpired = coupon.expires_at ? new Date(coupon.expires_at) < new Date() : false;
+      if (isExpired) {
+        return NextResponse.json({ error: `Coupon code "${cleanCode}" has expired.` }, { status: 400 });
+      }
+
+      const hasUsesLeft = coupon.max_uses > coupon.used_count;
+      if (!hasUsesLeft) {
+        return NextResponse.json({ error: `Coupon code "${cleanCode}" usage limit has been reached.` }, { status: 400 });
+      }
+
+      appliedCoupon = coupon;
+      if (coupon.discount_type === 'PERCENTAGE') {
+        discountAmount = Math.round((basePrice * coupon.discount_value) / 100);
+      } else {
+        discountAmount = Math.min(basePrice, coupon.discount_value);
+      }
+      finalPrice = Math.max(0, basePrice - discountAmount);
     }
 
     const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID;
@@ -58,6 +75,8 @@ export async function POST(req: NextRequest) {
         currency: 'INR',
         plan,
         discountAmount,
+        discountType: appliedCoupon?.discount_type || 'PERCENTAGE',
+        discountValue: appliedCoupon?.discount_value || 0,
         couponCode: appliedCoupon?.code || null,
         isFree: true,
       });
@@ -100,6 +119,8 @@ export async function POST(req: NextRequest) {
       currency: 'INR',
       plan,
       discountAmount,
+      discountType: appliedCoupon?.discount_type || 'PERCENTAGE',
+      discountValue: appliedCoupon?.discount_value || 0,
       couponCode: appliedCoupon?.code || null,
       keyId: razorpayKeyId || 'rzp_test_trinetra_demo',
       isFree: false,
