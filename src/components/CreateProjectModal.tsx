@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTrinetra } from '@/lib/store';
 import { AssignmentRule } from '@/types/database';
 import { X, FolderPlus, AlertCircle, CheckCircle2, Lock, Sparkles, GitBranch, Link2, Loader2 } from 'lucide-react';
@@ -11,13 +11,23 @@ interface CreateProjectModalProps {
 }
 
 export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose }) => {
-  const { users, currentUser, projects, isPro, createProject } = useTrinetra();
+  const { users, currentUser, projects, projectMembers, isPro, createProject } = useTrinetra();
 
   const [name, setName] = useState('');
   const [projectKey, setProjectKey] = useState('');
   const [description, setDescription] = useState('');
   const [teamLeaderId, setTeamLeaderId] = useState(currentUser?.id || '');
   const [assignmentRule, setAssignmentRule] = useState<AssignmentRule>('LEADER_ONLY');
+
+  useEffect(() => {
+    if (!teamLeaderId && currentUser?.id) {
+      setTeamLeaderId(currentUser.id);
+    }
+  }, [currentUser, teamLeaderId]);
+
+  // Only allow selecting currentUser or teammates that share an existing project
+  const sharedTeammateIds = new Set(projectMembers.map(pm => pm.user_id));
+  const availableTeammates = users.filter(u => u.id !== currentUser?.id && sharedTeammateIds.has(u.id));
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [targetDate, setTargetDate] = useState('');
   const [enableGithub, setEnableGithub] = useState(false);
@@ -239,25 +249,26 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
             </label>
             <select
               disabled={isLimitReached}
-              value={teamLeaderId}
+              value={teamLeaderId || currentUser?.id || ''}
               onChange={e => setTeamLeaderId(e.target.value)}
               className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800 disabled:bg-stone-100 disabled:cursor-not-allowed"
             >
-              <option value="">Select Team Leader</option>
               {currentUser && (
                 <option value={currentUser.id}>
                   {currentUser.full_name} ({currentUser.email}) [You]
                 </option>
               )}
-              {users
-                .filter(u => u.id !== currentUser?.id)
-                .map(u => (
-                  <option key={u.id} value={u.id}>
-                    {u.full_name} ({u.email})
-                  </option>
-                ))}
+              {availableTeammates.map(u => (
+                <option key={u.id} value={u.id}>
+                  {u.full_name} ({u.email})
+                </option>
+              ))}
             </select>
-            <p className="text-[11px] text-stone-400 mt-1">The Team Leader has full administrative oversight over tasks in this project.</p>
+            <p className="text-[11px] text-stone-400 mt-1">
+              {availableTeammates.length > 0
+                ? 'The Team Leader has full administrative oversight over tasks in this project.'
+                : 'You are the Team Leader. You can invite team members to this project after creating it.'}
+            </p>
           </div>
 
           {/* Assignment Governance Rule */}

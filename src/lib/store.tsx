@@ -204,9 +204,8 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
       };
       setCurrentUser(activeProfile);
 
-      // Fetch All Profiles (for user lookups)
+      // Fetch All Profiles (for enriching accessible tasks, projects, and activities)
       const { data: allProfiles } = await supabase.from('profiles').select('*');
-      if (allProfiles) setUsers(allProfiles);
 
       // Auto-accept any pending invitations for current user email
       if (user.email) {
@@ -286,6 +285,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
       const accessibleProjectIds = accessibleProjects.map(p => p.id);
 
       // 4. Fetch Project Members ONLY for accessible projects
+      let accessibleMemberUserIds: string[] = [];
       if (accessibleProjectIds.length > 0) {
         const { data: pMembers } = await supabase
           .from('project_members')
@@ -293,6 +293,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
           .in('project_id', accessibleProjectIds);
 
         if (pMembers) {
+          accessibleMemberUserIds = pMembers.map(pm => pm.user_id);
           const enrichedMembers: ProjectMember[] = pMembers.map(pm => ({
             ...pm,
             profile: allProfiles?.find(u => u.id === pm.user_id),
@@ -306,6 +307,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 5. Fetch Tasks ONLY for accessible projects
+      let accessibleTaskUserIds: string[] = [];
       if (accessibleProjectIds.length > 0) {
         const { data: taskList } = await supabase
           .from('tasks')
@@ -314,6 +316,7 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
           .order('created_at', { ascending: false });
 
         if (taskList) {
+          accessibleTaskUserIds = taskList.flatMap(t => [t.assigned_to, t.created_by].filter(Boolean) as string[]);
           const enrichedTasks: Task[] = taskList.map(t => ({
             ...t,
             creator: allProfiles?.find(u => u.id === t.created_by),
@@ -412,6 +415,17 @@ export function TrinetraProvider({ children }: { children: React.ReactNode }) {
       } else {
         setInvitations([]);
       }
+
+      // 8. Filter visible users strictly to current user + members sharing at least 1 accessible project
+      const sharedUserIds = new Set<string>([
+        user.id,
+        ...accessibleProjects.map(p => p.team_leader_id),
+        ...accessibleMemberUserIds,
+        ...accessibleTaskUserIds,
+      ]);
+
+      const visibleUsers = allProfiles ? allProfiles.filter(p => sharedUserIds.has(p.id)) : [activeProfile];
+      setUsers(visibleUsers);
     } catch (err) {
       console.error('Error fetching live Supabase data:', err);
     } finally {
