@@ -49,7 +49,7 @@ export async function POST(
     }
 
     const commitsRes = await fetch(
-      `https://api.github.com/repos/${repoFullName}/commits?per_page=50`,
+      `https://api.github.com/repos/${repoFullName}/commits?per_page=30`,
       { headers }
     );
 
@@ -59,17 +59,62 @@ export async function POST(
         throw new Error('GitHub token or session has expired. Please reconnect your repository to restore live commit syncing.');
       }
       if (commitsRes.status === 404) {
-        throw new Error(`Repository "${repoFullName}" was not found or is private. If it is private, please provide a GitHub Personal Access Token.`);
+        throw new Error(`Repository "${repoFullName}" was not found or is private. Please reconnect or authorize repository access.`);
+      }
+      if (commitsRes.status === 403) {
+        throw new Error(errData.message || 'GitHub API rate limit exceeded or access forbidden. Please check your repository permissions.');
       }
       throw new Error(errData.message || `Failed fetching commits from GitHub (${commitsRes.statusText})`);
     }
 
     const githubCommits = await commitsRes.json();
-    if (!Array.isArray(githubCommits)) {
-      return NextResponse.json({ synced_count: 0 });
+    if (!Array.isArray(githubCommits) || githubCommits.length === 0) {
+      return NextResponse.json({ synced_count: 0, message: 'No commits found in repository.' });
     }
 
-    let syncedCount = 0;
+    // 3. Parallel fetch of project tasks and user profiles for fast in-memory matching
+    const [tasksRes, profilesRes] = await Promise.all([
+      supabase.from('tasks').select('id, task_number').eq('project_id', projectId),
+      supabase.from('profiles').select('id, email, github_username'),
+    ]);
+
+    const projectTasks = tasksRes.data || [];
+    const allProfiles = profilesRes.data || [];
+
+    const taskMap = new Map<number, string>(projectTasks.map((t) => [t.task_number, t.id]));
+    const emailMap = new Map<string, string>(
+      allProfiles.filter((p) => p.email).map((p) => [p.email.toLowerCase(), p.id])
+    );
+    const usernameMap = new Map<string, string>(
+      allProfiles.filter((p) => p.github_username).map((p) => [p.github_username.toLowerCase(), p.id])
+    );
+
+    // 4. Map commits in memory
+    interface PreparedCommit {
+      project_id: string;
+      task_id: string | null;
+      user_id: string | null;
+      commit_sha: string;
+      branch: string;
+      commit_message: string;
+      author_github_username: string;
+      author_email: string;
+      commit_url: string;
+      total_additions: number;
+      total_deletions: number;
+      files_count: number;
+      pushed_at: string;
+      _files?: Array<{
+        filename: string;
+        status: string;
+        additions: number;
+        deletions: number;
+        patch: string | null;
+      }>;
+    }
+
+    const processedCommits: PreparedCommit[] = [];
+    const commitsNeedingDetails: PreparedCommit[] = [];
 
     for (const commitObj of githubCommits) {
       const commitSha = commitObj.sha;
@@ -79,126 +124,130 @@ export async function POST(
       const authorUsername = commitObj.author?.login || commitObj.commit?.author?.name || '';
       const timestamp = commitObj.commit?.author?.date || new Date().toISOString();
 
-      // Find platform user profile by email or GitHub username
-      let matchedUserId: string | null = null;
-      if (authorEmail || authorUsername) {
-        const { data: matchedProfile } = await supabase
-          .from('profiles')
-          .select('id')
-          .or(`email.eq.${authorEmail},github_username.ilike.${authorUsername}`)
-          .maybeSingle();
+      const matchedUserId =
+        (authorEmail && emailMap.get(authorEmail.toLowerCase())) ||
+        (authorUsername && usernameMap.get(authorUsername.toLowerCase())) ||
+        null;
 
-        if (matchedProfile) {
-          matchedUserId = matchedProfile.id;
-        }
-      }
-
-      // Check if commit message contains a task key number
-      const taskNumbers = extractTaskKeyNumbers(commitMessage, projectKey);
+      const taskNums = extractTaskKeyNumbers(commitMessage, projectKey);
       let matchedTaskId: string | null = null;
-
-      if (taskNumbers.length > 0) {
-        const { data: matchedTask } = await supabase
-          .from('tasks')
-          .select('id')
-          .eq('project_id', projectId)
-          .in('task_number', taskNumbers)
-          .maybeSingle();
-
-        if (matchedTask) {
-          matchedTaskId = matchedTask.id;
+      for (const num of taskNums) {
+        if (taskMap.has(num)) {
+          matchedTaskId = taskMap.get(num)!;
+          break;
         }
       }
 
-      // Fetch detailed commit files & diff patches
-      let detailedFiles: Array<{
-        filename: string;
-        status: string;
-        additions: number;
-        deletions: number;
-        patch?: string;
-      }> = [];
+      const record: PreparedCommit = {
+        project_id: projectId,
+        task_id: matchedTaskId,
+        user_id: matchedUserId,
+        commit_sha: commitSha,
+        branch: settings.default_branch || 'main',
+        commit_message: commitMessage,
+        author_github_username: authorUsername,
+        author_email: authorEmail,
+        commit_url: commitUrl,
+        total_additions: 0,
+        total_deletions: 0,
+        files_count: 0,
+        pushed_at: timestamp,
+      };
 
-      let totalAdded = 0;
-      let totalRemoved = 0;
-      let totalFiles = 0;
+      processedCommits.push(record);
 
-      try {
-        const detailRes = await fetch(
-          `https://api.github.com/repos/${repoFullName}/commits/${commitSha}`,
-          { headers }
-        );
-
-        if (detailRes.ok) {
-          const detailData = await detailRes.json();
-          if (detailData.stats) {
-            totalAdded = detailData.stats.additions || 0;
-            totalRemoved = detailData.stats.deletions || 0;
-          }
-          if (Array.isArray(detailData.files)) {
-            totalFiles = detailData.files.length;
-            detailedFiles = detailData.files.map((f: any) => ({
-              filename: f.filename,
-              status: f.status || 'modified',
-              additions: f.additions || 0,
-              deletions: f.deletions || 0,
-              patch: f.patch,
-            }));
-          }
-        }
-      } catch (detErr) {
-        console.warn(`Could not fetch details for commit ${commitSha}:`, detErr);
-      }
-
-      // Upsert into task_commits
-      const { data: insertedCommit, error: commitErr } = await supabase
-        .from('task_commits')
-        .upsert(
-          {
-            project_id: projectId,
-            task_id: matchedTaskId,
-            user_id: matchedUserId,
-            commit_sha: commitSha,
-            branch: settings.default_branch || 'main',
-            commit_message: commitMessage,
-            author_github_username: authorUsername,
-            author_email: authorEmail,
-            commit_url: commitUrl,
-            total_additions: totalAdded,
-            total_deletions: totalRemoved,
-            files_count: totalFiles,
-            pushed_at: timestamp,
-          },
-          { onConflict: 'project_id,commit_sha' }
-        )
-        .select()
-        .single();
-
-      if (commitErr) continue;
-
-      syncedCount++;
-      const commitId = insertedCommit.id;
-
-      // Store file-level changes & patches
-      if (detailedFiles.length > 0) {
-        const fileChangesPayload = detailedFiles.map((f) => ({
-          commit_id: commitId,
-          filename: f.filename,
-          status: f.status,
-          additions: f.additions,
-          deletions: f.deletions,
-          patch: f.patch || null,
-        }));
-
-        await supabase.from('task_commit_file_changes').delete().eq('commit_id', commitId);
-        await supabase.from('task_commit_file_changes').insert(fileChangesPayload);
+      // Fetch file diffs concurrently only for commits that match tasks or top 5 recent commits
+      if (matchedTaskId || processedCommits.length <= 5) {
+        commitsNeedingDetails.push(record);
       }
     }
+
+    // 5. Fetch diff stats in parallel for matched commits
+    const detailsPromises = commitsNeedingDetails.map(async (record) => {
+      try {
+        const detailRes = await fetch(
+          `https://api.github.com/repos/${repoFullName}/commits/${record.commit_sha}`,
+          { headers }
+        );
+        if (detailRes.ok) {
+          const detail = await detailRes.json();
+          record.total_additions = detail.stats?.additions || 0;
+          record.total_deletions = detail.stats?.deletions || 0;
+          record.files_count = Array.isArray(detail.files) ? detail.files.length : 0;
+          record._files = Array.isArray(detail.files)
+            ? detail.files.map((f: any) => ({
+                filename: f.filename,
+                status: f.status || 'modified',
+                additions: f.additions || 0,
+                deletions: f.deletions || 0,
+                patch: f.patch || null,
+              }))
+            : [];
+        }
+      } catch (err) {
+        console.warn(`Could not fetch details for ${record.commit_sha}:`, err);
+      }
+    });
+
+    await Promise.allSettled(detailsPromises);
+
+    // 6. Batch upsert commits into task_commits
+    const upsertPayload = processedCommits.map((c) => {
+      const { _files, ...dbRecord } = c;
+      return dbRecord;
+    });
+
+    const { data: upsertedCommits, error: upsertErr } = await supabase
+      .from('task_commits')
+      .upsert(upsertPayload, { onConflict: 'project_id,commit_sha' })
+      .select('id, commit_sha');
+
+    if (upsertErr) {
+      console.error('Failed to upsert commits:', upsertErr);
+      throw new Error(`Database error saving commits: ${upsertErr.message}`);
+    }
+
+    const shaToIdMap = new Map<string, string>(
+      (upsertedCommits || []).map((uc) => [uc.commit_sha, uc.id])
+    );
+
+    // 7. Store file-level changes & patches
+    const allFileChanges: Array<{
+      commit_id: string;
+      filename: string;
+      status: string;
+      additions: number;
+      deletions: number;
+      patch: string | null;
+    }> = [];
+    const commitIdsWithFiles: string[] = [];
+
+    for (const c of commitsNeedingDetails) {
+      const commitId = shaToIdMap.get(c.commit_sha);
+      if (commitId && c._files && c._files.length > 0) {
+        commitIdsWithFiles.push(commitId);
+        for (const f of c._files) {
+          allFileChanges.push({
+            commit_id: commitId,
+            ...f,
+          });
+        }
+      }
+    }
+
+    if (commitIdsWithFiles.length > 0) {
+      await supabase.from('task_commit_file_changes').delete().in('commit_id', commitIdsWithFiles);
+      if (allFileChanges.length > 0) {
+        await supabase.from('task_commit_file_changes').insert(allFileChanges);
+      }
+    }
+
+    const syncedCount = upsertedCommits?.length || 0;
 
     return NextResponse.json({
       success: true,
       synced_count: syncedCount,
-      message: `Successfully imported ${syncedCount} past commit(s) from ${repoFullName}`,
+      message: `Successfully synced ${syncedCount} past commit(s) from ${repoFullName}`,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to sync past commits';

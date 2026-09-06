@@ -48,12 +48,11 @@ export default function GitHubProjectSettingsModal({
 }: GitHubProjectSettingsModalProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [mode, setMode] = useState<'1click' | 'manual'>('1click');
+  const [syncing, setSyncing] = useState(false);
   const [connected, setConnected] = useState(false);
   const [repoFullName, setRepoFullName] = useState('');
   const [defaultBranch, setDefaultBranch] = useState('main');
   const [webhookSecret, setWebhookSecret] = useState('');
-  const [githubToken, setGithubToken] = useState('');
   
   // 1-Click OAuth state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -86,6 +85,8 @@ export default function GitHubProjectSettingsModal({
         setDefaultBranch(data.default_branch || 'main');
       } else {
         setConnected(false);
+        setRepoFullName('');
+        setWebhookSecret('');
       }
     } catch (err) {
       console.error('Failed to load GitHub settings', err);
@@ -147,10 +148,11 @@ export default function GitHubProjectSettingsModal({
 
       setConnected(true);
       setRepoFullName(selectedRepo.full_name);
+      setDefaultBranch(selectedRepo.default_branch || 'main');
       setWebhookSecret(data.settings?.webhook_secret || '');
-      setSuccessMsg(`Successfully connected to ${selectedRepo.full_name}! Syncing commits...`);
+      setSuccessMsg(`Successfully connected to ${selectedRepo.full_name}! Syncing past commits...`);
 
-      // Auto-sync commits from GitHub
+      // Auto-sync recent commits from GitHub
       try {
         const syncRes = await fetch(`/api/projects/${projectId}/github/sync-commits`, { method: 'POST' });
         const syncData = await syncRes.json();
@@ -170,51 +172,23 @@ export default function GitHubProjectSettingsModal({
     }
   };
 
-  // Handle Manual Save
-  const handleManualSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!repoFullName.trim()) return;
-
+  // Handle Manual Sync Past Commits
+  const handleSyncCommits = async () => {
     try {
-      setSaving(true);
+      setSyncing(true);
       setError(null);
       setSuccessMsg(null);
 
-      const res = await fetch(`/api/projects/${projectId}/github`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          repo_full_name: repoFullName.trim(),
-          default_branch: defaultBranch.trim() || 'main',
-          github_token: githubToken.trim() || undefined,
-          setup_webhook: false,
-        }),
-      });
-
+      const res = await fetch(`/api/projects/${projectId}/github/sync-commits`, { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save settings');
 
-      setConnected(true);
-      setWebhookSecret(data.settings?.webhook_secret || '');
-      setSuccessMsg('Repository verified and connected! Syncing commits...');
-
-      // Auto-sync recent commits from GitHub
-      try {
-        const syncRes = await fetch(`/api/projects/${projectId}/github/sync-commits`, { method: 'POST' });
-        const syncData = await syncRes.json();
-        if (syncRes.ok) {
-          setSuccessMsg(`Connected successfully! Imported ${syncData.synced_count || 0} commit(s) from ${repoFullName.trim()}.`);
-        } else {
-          setSuccessMsg(`Repository connected! (Note: ${syncData.error || 'Could not auto-fetch commits; ensure repository exists and permissions are granted.'})`);
-        }
-      } catch (_) {
-        setSuccessMsg(`Repository connected successfully to ${repoFullName.trim()}!`);
-      }
+      if (!res.ok) throw new Error(data.error || 'Failed to sync commits');
+      setSuccessMsg(`Imported ${data.synced_count || 0} past commit(s) from GitHub!`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error saving settings';
+      const msg = err instanceof Error ? err.message : 'Sync failed';
       setError(msg);
     } finally {
-      setSaving(false);
+      setSyncing(false);
     }
   };
 
@@ -234,6 +208,8 @@ export default function GitHubProjectSettingsModal({
       setWebhookSecret('');
       setSelectedRepo(null);
       setSuccessMsg('GitHub integration disconnected.');
+      // Refresh repositories list for connecting
+      fetchUserRepos();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error disconnecting';
       setError(msg);
@@ -336,50 +312,42 @@ export default function GitHubProjectSettingsModal({
             </div>
           )}
 
-          {/* Connected Active Card */}
-          {connected && (
-            <div className="p-4 bg-[#FDFBF7] border border-[#E8E2D5] rounded-xl space-y-3 shadow-2xs">
+          {loading ? (
+            <div className="py-12 text-center text-stone-400 flex items-center justify-center gap-2">
+              <RefreshCw className="w-5 h-5 animate-spin text-[#4A154B]" />
+              <span className="text-xs">Loading GitHub connection settings...</span>
+            </div>
+          ) : connected ? (
+            /* Connected State: Clean repository card with Webhook verification details */
+            <div className="p-4 bg-[#FDFBF7] border border-[#E8E2D5] rounded-xl space-y-4 shadow-2xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 shrink-0">
                     <CheckCircle2 className="w-5 h-5" />
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                      Connected to <code className="text-[#4A154B] bg-white border border-stone-200 px-2 py-0.5 rounded font-mono text-xs font-semibold">{repoFullName}</code>
+                      Connected to <code className="text-[#4A154B] bg-white border border-stone-200 px-2.5 py-0.5 rounded-md font-mono text-xs font-semibold">{repoFullName}</code>
                     </h4>
                     <p className="text-xs text-stone-500 mt-0.5">
-                      Webhooks active • Commits automatically logged on push
+                      Default branch: <span className="font-mono text-stone-700 font-semibold">{defaultBranch}</span> • Webhooks active • Commits automatically logged on push
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
-                    onClick={async () => {
-                      try {
-                        setSaving(true);
-                        setError(null);
-                        const res = await fetch(`/api/projects/${projectId}/github/sync-commits`, { method: 'POST' });
-                        const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || 'Failed to sync commits');
-                        setSuccessMsg(`Imported ${data.synced_count || 0} past commit(s) from GitHub!`);
-                      } catch (err: any) {
-                        setError(err.message || 'Sync failed');
-                      } finally {
-                        setSaving(false);
-                      }
-                    }}
-                    disabled={saving}
-                    className="px-3 py-1.5 bg-white hover:bg-stone-50 text-stone-800 border border-stone-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
+                    onClick={handleSyncCommits}
+                    disabled={syncing || saving}
+                    className="px-3.5 py-2 bg-white hover:bg-stone-50 text-stone-800 border border-stone-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 text-[#4A154B] ${saving ? 'animate-spin' : ''}`} />
-                    <span>{saving ? 'Syncing...' : 'Sync Past Commits'}</span>
+                    <RefreshCw className={`w-3.5 h-3.5 text-[#4A154B] ${syncing ? 'animate-spin' : ''}`} />
+                    <span>{syncing ? 'Syncing...' : 'Sync Past Commits'}</span>
                   </button>
                   <button
                     onClick={handleDisconnect}
-                    disabled={saving}
-                    className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                    disabled={syncing || saving}
+                    className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
                   >
                     <Trash2 className="w-3.5 h-3.5" /> Disconnect
                   </button>
@@ -411,6 +379,7 @@ export default function GitHubProjectSettingsModal({
                         type="button"
                         onClick={() => copyToClipboard(webhookUrl, 'url')}
                         className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 rounded-lg text-[11px] flex items-center gap-1 transition shrink-0 cursor-pointer"
+                        title="Copy Payload URL"
                       >
                         {copiedUrl ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                       </button>
@@ -431,6 +400,7 @@ export default function GitHubProjectSettingsModal({
                           type="button"
                           onClick={() => copyToClipboard(webhookSecret, 'secret')}
                           className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 rounded-lg text-[11px] flex items-center gap-1 transition shrink-0 cursor-pointer"
+                          title="Copy Webhook Secret"
                         >
                           {copiedSecret ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                         </button>
@@ -440,38 +410,8 @@ export default function GitHubProjectSettingsModal({
                 </div>
               </div>
             </div>
-          )}
-
-          {/* Mode Switcher Tabs */}
-          <div className="flex items-center gap-2 border-b border-stone-200 pb-2">
-            <button
-              onClick={() => setMode('1click')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition cursor-pointer ${
-                mode === '1click'
-                  ? 'bg-[#4A154B] text-white shadow-2xs'
-                  : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
-              }`}
-            >
-              <GitBranch className="w-3.5 h-3.5" /> 1-Click Dropdown
-            </button>
-            <button
-              onClick={() => setMode('manual')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition cursor-pointer ${
-                mode === 'manual'
-                  ? 'bg-[#4A154B] text-white shadow-2xs'
-                  : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
-              }`}
-            >
-              <Link2 className="w-3.5 h-3.5" /> Manual Setup
-            </button>
-          </div>
-
-          {loading ? (
-            <div className="py-12 text-center text-stone-400 flex items-center justify-center gap-2">
-              <RefreshCw className="w-5 h-5 animate-spin text-[#4A154B]" />
-              <span className="text-xs">Loading GitHub connection settings...</span>
-            </div>
-          ) : mode === '1click' ? (
+          ) : (
+            /* Disconnected State: Clean 1-Click Connection Flow */
             <div className="space-y-4">
               {!isAuthenticated ? (
                 /* Step 1: Connect GitHub Account */
@@ -623,131 +563,6 @@ export default function GitHubProjectSettingsModal({
                 </div>
               )}
             </div>
-          ) : (
-            /* Manual Webhook Setup Tab */
-            <form onSubmit={handleManualSave} className="space-y-4">
-              <div className="p-3.5 bg-purple-50/50 border border-purple-200/60 rounded-xl text-stone-700 text-xs flex items-start gap-2.5">
-                <Lock className="w-4 h-4 text-[#4A154B] shrink-0 mt-0.5" />
-                <p className="leading-relaxed">
-                  Enter your GitHub repository path. For <strong>private repositories</strong>, include a GitHub Personal Access Token so Trinetra can fetch commit messages and code diffs.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
-                  GitHub Repository <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={repoFullName}
-                  onChange={(e) => setRepoFullName(e.target.value)}
-                  placeholder="e.g. amarwebbit/Tasks or organization/repository"
-                  className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-stone-900 text-xs focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800 transition"
-                  required
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider">
-                    Personal Access Token (PAT)
-                  </label>
-                  <span className="text-[11px] text-stone-500">Optional for public repos</span>
-                </div>
-                <input
-                  type="password"
-                  value={githubToken}
-                  onChange={(e) => setGithubToken(e.target.value)}
-                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx (Required for private repositories)"
-                  className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-lg text-stone-900 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-800/20 focus:border-purple-800 transition"
-                />
-                <p className="text-[11px] text-stone-500 mt-1">
-                  Create a token on GitHub with <code>repo</code> access under <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-[#4A154B] underline font-medium">Developer settings &gt; Personal access tokens</a>.
-                </p>
-              </div>
-
-              {/* Webhook Configuration Details */}
-              <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl space-y-3 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-stone-800 flex items-center gap-1.5">
-                    <Link2 className="w-3.5 h-3.5 text-[#4A154B]" /> Webhook Setup for Real-Time Commits
-                  </span>
-                  {repoFullName.includes('/') && (
-                    <a
-                      href={`https://github.com/${repoFullName.trim()}/settings/hooks/new`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] text-[#4A154B] hover:underline font-semibold flex items-center gap-1"
-                    >
-                      Add to GitHub <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
-                </div>
-
-                <div>
-                  <span className="text-stone-600 font-medium block mb-1">1. Payload URL:</span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={webhookUrl}
-                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-stone-800 font-mono text-xs"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(webhookUrl, 'url')}
-                      className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 rounded-lg text-xs flex items-center gap-1 transition cursor-pointer"
-                    >
-                      {copiedUrl ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <span className="text-stone-600 font-medium block mb-1">2. Content type:</span>
-                    <input
-                      type="text"
-                      readOnly
-                      value="application/json"
-                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-stone-800 font-mono text-xs"
-                    />
-                  </div>
-
-                  <div>
-                    <span className="text-stone-600 font-medium block mb-1">3. Secret Key:</span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={webhookSecret || 'Auto-generated on Save'}
-                        className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-stone-800 font-mono text-xs"
-                      />
-                      {webhookSecret && (
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(webhookSecret, 'secret')}
-                          className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 rounded-lg text-xs flex items-center gap-1 transition cursor-pointer"
-                        >
-                          {copiedSecret ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-5 py-2.5 bg-[#4A154B] hover:bg-[#3B0F3C] text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition cursor-pointer shadow-2xs disabled:opacity-50"
-                >
-                  {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  <span>{saving ? 'Verifying & Saving...' : 'Verify & Save Configuration'}</span>
-                </button>
-              </div>
-            </form>
           )}
         </div>
 
