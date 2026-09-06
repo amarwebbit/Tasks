@@ -641,6 +641,7 @@ export default function ProjectDetailPage() {
                   {members.map(m => {
                     const isLeader = m.role === 'LEADER';
                     const isPrimaryLeader = m.user_id === project.team_leader_id;
+                    const isViewer = m.role === 'VIEWER';
                     return (
                       <tr key={m.id} className="hover:bg-[#FBF9F5] transition-colors">
                         <td className="py-3.5 px-4 font-semibold text-stone-900">
@@ -655,16 +656,22 @@ export default function ProjectDetailPage() {
                           {m.profile?.email}
                         </td>
                         <td className="py-3.5 px-4">
-                          <select
-                            value={m.role}
-                            onChange={e => updateMemberPermissions(m.id, { role: e.target.value as ProjectRole })}
-                            disabled={!canManage || isPrimaryLeader}
-                            className="px-2 py-1 bg-white border border-stone-300 rounded text-xs text-stone-800 disabled:bg-stone-100"
-                          >
-                            <option value="LEADER">Team Leader</option>
-                            <option value="MEMBER">Member</option>
-                            <option value="VIEWER">Viewer</option>
-                          </select>
+                          {isViewer ? (
+                            <span className="px-2.5 py-1 rounded text-xs font-semibold bg-stone-100 text-stone-700 border border-stone-200 inline-block">
+                              Viewer
+                            </span>
+                          ) : (
+                            <select
+                              value={m.role}
+                              onChange={e => updateMemberPermissions(m.id, { role: e.target.value as ProjectRole })}
+                              disabled={!canManage || isPrimaryLeader}
+                              className="px-2 py-1 bg-white border border-stone-300 rounded text-xs text-stone-800 disabled:bg-stone-100"
+                            >
+                              <option value="LEADER">Team Leader</option>
+                              <option value="MEMBER">Member</option>
+                              <option value="VIEWER">Viewer</option>
+                            </select>
+                          )}
                         </td>
                         {/* Can Receive Tasks Toggle */}
                         <td className="py-3.5 px-4 text-center">
@@ -708,6 +715,8 @@ export default function ProjectDetailPage() {
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-stone-100 text-stone-600 border border-stone-200">
                               Primary Leader
                             </span>
+                          ) : isViewer ? (
+                            <span className="text-stone-400 text-xs">—</span>
                           ) : canManage ? (
                             <button
                               type="button"
