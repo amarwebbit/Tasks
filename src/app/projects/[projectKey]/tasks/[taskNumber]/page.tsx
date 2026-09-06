@@ -30,6 +30,7 @@ import {
   Check,
   GitCommit,
   Loader2,
+  Download,
 } from 'lucide-react';
 import { TaskComment } from '@/types/database';
 import TaskCodeChangesTab from '@/components/github/TaskCodeChangesTab';
@@ -605,7 +606,7 @@ export default function TaskDetailPage() {
                         <Paperclip className="w-3.5 h-3.5 text-stone-400 shrink-0" />
                         {att.file_url ? (
                           <a
-                            href={att.file_url}
+                            href={att.id ? `/api/tasks/attachments/${att.id}` : att.file_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="font-semibold text-purple-900 hover:text-purple-950 hover:underline break-all inline-flex items-center gap-1 cursor-pointer"
@@ -617,9 +618,21 @@ export default function TaskDetailPage() {
                         )}
                         <span className="text-[11px] text-stone-400">({Math.round((att.file_size || 0) / 1024)} KB)</span>
                       </div>
-                      <span className="text-[11px] text-stone-500 shrink-0 self-end sm:self-center">
-                        Uploaded by {att.user?.full_name || 'User'}
-                      </span>
+                      <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                        {att.id && (
+                          <a
+                            href={`/api/tasks/attachments/${att.id}?download=1`}
+                            download={att.file_name}
+                            title="Download file"
+                            className="text-stone-400 hover:text-purple-900 p-1 rounded transition-colors"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                        <span className="text-[11px] text-stone-500">
+                          Uploaded by {att.user?.full_name || 'User'}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
