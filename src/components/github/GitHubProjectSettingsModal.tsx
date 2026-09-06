@@ -99,15 +99,17 @@ export default function GitHubProjectSettingsModal({
       const res = await fetch('/api/github/user-repos');
       const data = await res.json();
 
-      if (res.ok && data.repos) {
+      if (res.ok && data.authenticated && Array.isArray(data.repos)) {
         setIsAuthenticated(true);
         setUserRepos(data.repos);
       } else {
         setIsAuthenticated(false);
+        setUserRepos([]);
       }
     } catch (err) {
       console.error('Failed to fetch user repos', err);
       setIsAuthenticated(false);
+      setUserRepos([]);
     }
   }, []);
 
@@ -448,9 +450,18 @@ export default function GitHubProjectSettingsModal({
                     <label className="text-xs font-semibold text-stone-700 uppercase tracking-wider">
                       Select Repository
                     </label>
-                    <span className="text-[11px] text-stone-500 font-mono">
-                      {userRepos.length} repos available
-                    </span>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-[11px] text-stone-500 font-mono">
+                        {userRepos.length} repos available
+                      </span>
+                      <a
+                        href={`/api/github/oauth/connect?projectId=${projectId}&projectKey=${projectKey}`}
+                        className="text-[11px] text-[#4A154B] hover:underline font-semibold"
+                        title="Grant access to more repositories on GitHub"
+                      >
+                        Grant access / Switch account
+                      </a>
+                    </div>
                   </div>
 
                   <div className="relative">
@@ -468,7 +479,24 @@ export default function GitHubProjectSettingsModal({
 
                   <div className="max-h-60 overflow-y-auto border border-stone-200 rounded-xl divide-y divide-stone-100 bg-white">
                     {filteredRepos.length === 0 ? (
-                      <div className="p-4 text-center text-stone-400 text-xs">No repositories match your search.</div>
+                      <div className="p-6 text-center text-xs space-y-2">
+                        {userRepos.length === 0 ? (
+                          <>
+                            <p className="text-stone-700 font-medium">No repositories accessible.</p>
+                            <p className="text-stone-500 text-[11px]">
+                              You may need to grant repository access permissions in your GitHub App settings.
+                            </p>
+                            <a
+                              href={`/api/github/oauth/connect?projectId=${projectId}&projectKey=${projectKey}`}
+                              className="inline-flex items-center gap-1 text-[#4A154B] hover:underline font-semibold text-xs mt-1"
+                            >
+                              Configure GitHub Permissions <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </>
+                        ) : (
+                          <span className="text-stone-400">No repositories match your search.</span>
+                        )}
+                      </div>
                     ) : (
                       filteredRepos.map((repo) => {
                         const isSelected = selectedRepo?.id === repo.id;

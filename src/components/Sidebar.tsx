@@ -74,21 +74,24 @@ export const Sidebar: React.FC = () => {
         }`}
       >
         {/* Organization Brand Header */}
-        <div className="p-5 border-b border-[#E8E2D5] bg-white/60 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
+        <div className="px-4 py-4.5 border-b border-[#E8E2D5] bg-white/60 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="w-8 h-8 rounded-lg bg-[#0E0C12] border border-stone-200/50 flex items-center justify-center text-white shadow-xs shrink-0 p-1">
               <img src="/logo.png" alt="Trinetra Logo" className="w-full h-full object-contain" />
             </div>
-            <div className="truncate">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 min-w-0">
-                <h1 className="text-sm font-bold tracking-tight text-stone-900 leading-none truncate max-w-[100px]">
+                <h1
+                  className="text-sm font-bold tracking-tight text-stone-900 leading-none truncate"
+                  title={organization?.name || (currentUser ? `${currentUser.full_name}'s Workspace` : 'Trinetra Workspace')}
+                >
                   {organization?.name || (currentUser ? `${currentUser.full_name}'s Workspace` : 'Trinetra Workspace')}
                 </h1>
                 <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-[9px] tracking-wider uppercase shrink-0">
                   BETA
                 </span>
               </div>
-              <span className="text-[11px] text-stone-500 font-medium">Task Accountability Engine</span>
+              <span className="text-[11px] text-stone-500 font-medium block truncate">Task Accountability Engine</span>
             </div>
           </div>
           {/* Close button visible only on mobile/tablet */}
