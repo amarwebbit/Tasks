@@ -54,7 +54,13 @@ export async function POST(
     );
 
     if (!commitsRes.ok) {
-      const errData = await commitsRes.json();
+      const errData = await commitsRes.json().catch(() => ({}));
+      if (commitsRes.status === 401) {
+        throw new Error('GitHub token has expired (Bad credentials). Please click Disconnect and reconnect via 1-Click Dropdown, or update your Personal Access Token in Manual Setup.');
+      }
+      if (commitsRes.status === 404) {
+        throw new Error(`Repository "${repoFullName}" was not found or is private. If it is private, please provide a GitHub Personal Access Token.`);
+      }
       throw new Error(errData.message || `Failed fetching commits from GitHub (${commitsRes.statusText})`);
     }
 

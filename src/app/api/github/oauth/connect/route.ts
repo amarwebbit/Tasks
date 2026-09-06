@@ -21,23 +21,17 @@ export async function GET(req: NextRequest) {
 
   const state = JSON.stringify({ projectId, projectKey, redirectPath });
 
-  // If a GitHub App slug is configured, redirect to GitHub App installation flow for granular repo isolation
-  if (appName) {
-    const installUrl = `https://github.com/apps/${appName}/installations/new?state=${encodeURIComponent(state)}`;
-    return NextResponse.redirect(installUrl);
-  }
-
   if (!clientId) {
     return NextResponse.json(
-      { error: 'GITHUB_CLIENT_ID or GITHUB_APP_NAME is not configured in environment variables.' },
+      { error: 'GITHUB_CLIENT_ID is not configured in environment variables.' },
       { status: 500 }
     );
   }
 
   const callbackUrl = `${appUrl}/api/github/oauth/callback`;
 
-  // Lightweight, non-intimidating scopes for standard OAuth
-  const scope = 'public_repo read:user user:email';
+  // Full repo scope for both public and private repositories and webhook access
+  const scope = 'repo read:user user:email';
   const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
     callbackUrl
   )}&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`;
