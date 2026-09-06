@@ -291,9 +291,41 @@ export default function GitHubProjectSettingsModal({
         {/* Body */}
         <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
           {error && (
-            <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2.5 text-red-800 text-xs font-medium">
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-              <span>{error}</span>
+            <div className={`p-4 rounded-xl text-xs ${
+              error.toLowerCase().includes('credential') || error.toLowerCase().includes('expired') || error.toLowerCase().includes('reconnect')
+                ? 'bg-amber-50 border border-amber-200 text-amber-900'
+                : 'bg-red-50 border border-red-200 text-red-800'
+            }`}>
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${
+                  error.toLowerCase().includes('credential') || error.toLowerCase().includes('expired') || error.toLowerCase().includes('reconnect')
+                    ? 'text-amber-600'
+                    : 'text-red-600'
+                }`} />
+                <div className="space-y-1.5 flex-1">
+                  <div className="font-bold text-xs">
+                    {error.toLowerCase().includes('credential') || error.toLowerCase().includes('expired')
+                      ? 'GitHub Session or Token Expired'
+                      : 'Connection Notice'}
+                  </div>
+                  <p className="leading-relaxed">
+                    {error.toLowerCase().includes('credential') || error.toLowerCase().includes('expired')
+                      ? 'Your GitHub connection token or session has expired. Please reconnect your repository to restore live commit syncing and webhook updates.'
+                      : error}
+                  </p>
+                  {(error.toLowerCase().includes('credential') || error.toLowerCase().includes('expired') || error.toLowerCase().includes('reconnect')) && (
+                    <div className="pt-1 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleDisconnect}
+                        className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg text-[11px] transition cursor-pointer shadow-2xs"
+                      >
+                        Disconnect &amp; Reconnect Repository
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 

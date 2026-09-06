@@ -41,6 +41,9 @@ export default function LinkPushedCodeModal({
       if (data.commits) {
         setCommits(data.commits);
       }
+      if (data.warning || data.error) {
+        setError(data.warning || data.error);
+      }
     } catch (err) {
       console.error('Failed to load unlinked commits', err);
       setError('Could not fetch unlinked project commits.');
@@ -161,9 +164,26 @@ export default function LinkPushedCodeModal({
         {/* Content */}
         <div className="p-6 space-y-4 max-h-[55vh] overflow-y-auto">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-800 text-xs font-medium">
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-              <span>{error}</span>
+            <div className={`p-3.5 rounded-xl text-xs ${
+              error.toLowerCase().includes('expired') || error.toLowerCase().includes('credential')
+                ? 'bg-amber-50 border border-amber-200 text-amber-900'
+                : 'bg-red-50 border border-red-200 text-red-800'
+            }`}>
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${
+                  error.toLowerCase().includes('expired') || error.toLowerCase().includes('credential')
+                    ? 'text-amber-600'
+                    : 'text-red-600'
+                }`} />
+                <div className="space-y-1">
+                  <span className="font-semibold block">
+                    {error.toLowerCase().includes('expired') || error.toLowerCase().includes('credential')
+                      ? 'GitHub Session Expired'
+                      : 'Notice'}
+                  </span>
+                  <p className="leading-relaxed">{error}</p>
+                </div>
+              </div>
             </div>
           )}
 

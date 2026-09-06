@@ -90,6 +90,19 @@ export async function GET(
                 }
               }
             }
+          } else if (ghRes.status === 401) {
+            const { data: finalCommits } = await supabase
+              .from('task_commits')
+              .select('*')
+              .eq('project_id', projectId)
+              .is('task_id', null)
+              .order('pushed_at', { ascending: false })
+              .limit(30);
+
+            return NextResponse.json({
+              commits: finalCommits || [],
+              warning: 'GitHub token or session has expired. Please reconnect your repository in project settings to fetch recent commits.',
+            });
           }
         } catch (fetchErr) {
           console.warn('Failed live GitHub fetch in unlinked-commits:', fetchErr);
