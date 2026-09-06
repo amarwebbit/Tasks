@@ -63,87 +63,100 @@ export async function POST(
   try {
     const { taskId } = await params;
     const body = await req.json();
-    const { commit_shas, user_id } = body;
-
-    if (!Array.isArray(commit_shas) || commit_shas.length === 0) {
-      return NextResponse.json({ error: 'commit_shas array is required' }, { status: 400 });
-    }
+    const { commit_shas = [], unlinked_shas = [], user_id } = body;
 
     const supabase = getSupabaseClient();
 
-    // Update commits to point to this task_id
-    const { data: updatedCommits, error } = await supabase
-      .from('task_commits')
-      .update({ task_id: taskId })
-      .in('commit_sha', commit_shas)
-      .select();
+    // 1. Unlink any deselected commits
+    if (Array.isArray(unlinked_shas) && unlinked_shas.length > 0) {
+      await supabase
+        .from('task_commits')
+        .update({ task_id: null })
+        .eq('task_id', taskId)
+        .in('commit_sha', unlinked_shas);
+    }
 
-    // If any linked commit doesn't have file changes yet, fetch them from GitHub
-    if (updatedCommits && updatedCommits.length > 0) {
-      try {
-        const projectId = updatedCommits[0].project_id;
-        const { data: settings } = await supabase
-          .from('project_github_settings')
-          .select('repo_full_name, github_token')
-          .eq('project_id', projectId)
-          .maybeSingle();
+    // 2. Link selected commits
+    let updatedCommits: any[] = [];
+    if (Array.isArray(commit_shas) && commit_shas.length > 0) {
+      const { data: linked, error } = await supabase
+        .from('task_commits')
+        .update({ task_id: taskId })
+        .in('commit_sha', commit_shas)
+        .select();
 
-        if (settings?.repo_full_name) {
-          const headers: Record<string, string> = {
-            Accept: 'application/vnd.github.v3+json',
-            'User-Agent': 'Trinetra-Tasks-App',
-          };
-          const token = settings.github_token || req.cookies.get('gh_token')?.value || null;
-          if (token) headers['Authorization'] = `token ${token}`;
+      if (error) throw error;
+      updatedCommits = linked || [];
 
-          for (const c of updatedCommits) {
-            const { count } = await supabase
-              .from('task_commit_file_changes')
-              .select('*', { count: 'exact', head: true })
-              .eq('commit_id', c.id);
+      // If any linked commit doesn't have file changes yet, fetch them from GitHub
+      if (updatedCommits.length > 0) {
+        try {
+          const projectId = updatedCommits[0].project_id;
+          const { data: settings } = await supabase
+            .from('project_github_settings')
+            .select('repo_full_name, github_token')
+            .eq('project_id', projectId)
+            .maybeSingle();
 
-            if (!count || count === 0) {
-              const res = await fetch(`https://api.github.com/repos/${settings.repo_full_name}/commits/${c.commit_sha}`, { headers });
-              if (res.ok) {
-                const data = await res.json();
-                if (Array.isArray(data.files) && data.files.length > 0) {
-                  const payload = data.files.map((f: any) => ({
-                    commit_id: c.id,
-                    filename: f.filename,
-                    status: f.status || 'modified',
-                    additions: f.additions || 0,
-                    deletions: f.deletions || 0,
-                    patch: f.patch || null,
-                  }));
-                  await supabase.from('task_commit_file_changes').insert(payload);
+          if (settings?.repo_full_name) {
+            const headers: Record<string, string> = {
+              Accept: 'application/vnd.github.v3+json',
+              'User-Agent': 'Trinetra-Tasks-App',
+            };
+            const token = settings.github_token || req.cookies.get('gh_token')?.value || null;
+            if (token) headers['Authorization'] = `token ${token}`;
 
-                  await supabase.from('task_commits').update({
-                    total_additions: data.stats?.additions || 0,
-                    total_deletions: data.stats?.deletions || 0,
-                    files_count: data.files.length,
-                  }).eq('id', c.id);
+            for (const c of updatedCommits) {
+              const { count } = await supabase
+                .from('task_commit_file_changes')
+                .select('*', { count: 'exact', head: true })
+                .eq('commit_id', c.id);
+
+              if (!count || count === 0) {
+                const res = await fetch(`https://api.github.com/repos/${settings.repo_full_name}/commits/${c.commit_sha}`, { headers });
+                if (res.ok) {
+                  const data = await res.json();
+                  if (Array.isArray(data.files) && data.files.length > 0) {
+                    const payload = data.files.map((f: any) => ({
+                      commit_id: c.id,
+                      filename: f.filename,
+                      status: f.status || 'modified',
+                      additions: f.additions || 0,
+                      deletions: f.deletions || 0,
+                      patch: f.patch || null,
+                    }));
+                    await supabase.from('task_commit_file_changes').insert(payload);
+
+                    await supabase.from('task_commits').update({
+                      total_additions: data.stats?.additions || 0,
+                      total_deletions: data.stats?.deletions || 0,
+                      files_count: data.files.length,
+                    }).eq('id', c.id);
+                  }
                 }
               }
             }
           }
+        } catch (diffErr) {
+          console.warn('Failed fetching diff for manually linked commit:', diffErr);
         }
-      } catch (diffErr) {
-        console.warn('Failed fetching diff for manually linked commit:', diffErr);
       }
     }
 
-    // Add activity log
-    await supabase.from('task_activity').insert({
-      task_id: taskId,
-      user_id: user_id || null,
-      action: 'CODE_PUSHED',
-      new_value: `Manually linked ${commit_shas.length} code commit(s)`,
-      details: { commit_shas },
-    });
+    // Add activity log if changes made
+    if (commit_shas.length > 0 || (Array.isArray(unlinked_shas) && unlinked_shas.length > 0)) {
+      await supabase.from('task_activity').insert({
+        task_id: taskId,
+        user_id: user_id || null,
+        action: 'CODE_PUSHED',
+        new_value: `Updated task code linkage (${commit_shas.length} linked)`,
+        details: { commit_shas, unlinked_shas },
+      });
+    }
 
     return NextResponse.json({ success: true, updated: updatedCommits });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to link commits';
+    const message = err instanceof Error ? err.message : 'Failed to update linked commits';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
