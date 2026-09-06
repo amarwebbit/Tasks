@@ -74,6 +74,39 @@ export async function POST(
     const webhookSecret = existing?.webhook_secret || crypto.randomBytes(32).toString('hex');
     const cleanRepoName = repo_full_name.trim().replace(/^https:\/\/github\.com\//, '').replace(/\.git$/, '');
 
+    if (!cleanRepoName.includes('/') || cleanRepoName.split('/').length !== 2) {
+      return NextResponse.json({ error: 'Please enter a valid repository format "owner/repo" (e.g. amarwebbit/Tasks)' }, { status: 400 });
+    }
+
+    // Verify repository exists and is accessible on GitHub
+    const effectiveToken = github_token?.trim() || req.cookies.get('gh_token')?.value || null;
+    const testHeaders: Record<string, string> = {
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': 'Trinetra-Tasks-App',
+    };
+    if (effectiveToken) {
+      testHeaders['Authorization'] = `token ${effectiveToken}`;
+    }
+
+    try {
+      const checkRes = await fetch(`https://api.github.com/repos/${cleanRepoName}`, { headers: testHeaders });
+      if (!checkRes.ok) {
+        if (checkRes.status === 404) {
+          return NextResponse.json(
+            { error: `Repository "${cleanRepoName}" was not found on GitHub. If this repository is private, please provide a GitHub Personal Access Token.` },
+            { status: 400 }
+          );
+        } else if (checkRes.status === 401) {
+          return NextResponse.json(
+            { error: 'GitHub returned 401 Unauthorized. Please verify your Personal Access Token.' },
+            { status: 400 }
+          );
+        }
+      }
+    } catch (checkErr) {
+      console.warn('Could not verify GitHub repo connectivity:', checkErr);
+    }
+
     const { data: updated, error } = await supabase
       .from('project_github_settings')
       .upsert(

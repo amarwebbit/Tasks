@@ -46,7 +46,7 @@ export async function GET(
             Accept: 'application/vnd.github.v3+json',
             'User-Agent': 'Trinetra-Tasks-App',
           };
-          const token = settings.github_token || req.cookies.get('gh_token')?.value || process.env.GITHUB_CLIENT_SECRET;
+          const token = settings.github_token || req.cookies.get('gh_token')?.value || null;
           if (token) {
             headers['Authorization'] = `token ${token}`;
           }

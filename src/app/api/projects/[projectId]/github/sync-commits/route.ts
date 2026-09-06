@@ -37,7 +37,7 @@ export async function POST(
 
     const repoFullName = settings.repo_full_name;
     const projectKey = settings.projects?.project_key || '';
-    const ghToken = settings.github_token || req.cookies.get('gh_token')?.value || process.env.GITHUB_CLIENT_SECRET;
+    const ghToken = settings.github_token || req.cookies.get('gh_token')?.value || null;
 
     // 2. Fetch past commits from GitHub REST API
     const headers: Record<string, string> = {

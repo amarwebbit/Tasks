@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     }
 
     let processedCount = 0;
-    const authToken = githubSettings.github_token || process.env.GITHUB_CLIENT_SECRET;
+    const authToken = githubSettings.github_token || null;
 
     for (const commit of commits) {
       const commitSha = commit.id;
