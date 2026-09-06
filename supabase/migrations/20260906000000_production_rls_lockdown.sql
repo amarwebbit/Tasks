@@ -8,7 +8,7 @@ DROP POLICY IF EXISTS "Notifications select" ON public.notifications;
 CREATE POLICY "Notifications select" ON public.notifications 
 FOR SELECT TO authenticated USING (user_id = auth.uid());
 
--- 2. PROJECTS: Users can ONLY see projects they own or belong to
+-- 2. PROJECTS: Users can ONLY see projects they own, lead, or belong to
 DROP POLICY IF EXISTS "Projects select" ON public.projects;
 CREATE POLICY "Projects select" ON public.projects 
 FOR SELECT TO authenticated USING (
@@ -25,6 +25,8 @@ FOR SELECT TO authenticated USING (
     SELECT id FROM public.projects WHERE team_leader_id = auth.uid()
     UNION
     SELECT project_id FROM public.project_members WHERE user_id = auth.uid() AND status = 'ACTIVE'
+    UNION
+    SELECT id FROM public.projects WHERE organization_id IN (SELECT id FROM public.organizations WHERE created_by = auth.uid())
   )
 );
 
@@ -41,20 +43,26 @@ FOR SELECT TO authenticated USING (
   task_id IN (SELECT id FROM public.tasks)
 );
 
--- 5. PROFILES: Users can ONLY see their own profile and project teammates
+-- 5. PROFILES: Users can ONLY see their own profile and confirmed project teammates
 DROP POLICY IF EXISTS "Profiles select" ON public.profiles;
 CREATE POLICY "Profiles select" ON public.profiles 
 FOR SELECT TO authenticated USING (
   id = auth.uid()
   OR id IN (
+    -- Teammates in projects the current user leads or belongs to
     SELECT pm.user_id FROM public.project_members pm
     WHERE pm.project_id IN (
+      SELECT id FROM public.projects WHERE team_leader_id = auth.uid()
+      UNION
       SELECT project_id FROM public.project_members WHERE user_id = auth.uid()
     )
   )
   OR id IN (
+    -- Team leaders of projects the current user belongs to
     SELECT p.team_leader_id FROM public.projects p
     WHERE p.id IN (
+      SELECT id FROM public.projects WHERE team_leader_id = auth.uid()
+      UNION
       SELECT project_id FROM public.project_members WHERE user_id = auth.uid()
     )
   )
