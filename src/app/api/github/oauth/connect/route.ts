@@ -13,9 +13,10 @@ export async function GET(req: NextRequest) {
   const projectId = searchParams.get('projectId') || '';
   const projectKey = searchParams.get('projectKey') || '';
   const redirectPath = searchParams.get('redirectPath') || '';
+  const prompt = searchParams.get('prompt') || '';
+  const isSwitchAccount = searchParams.get('switchAccount') === 'true' || prompt === 'select_account';
 
   const clientId = process.env.GITHUB_CLIENT_ID;
-  const appName = process.env.GITHUB_APP_NAME;
   const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
   const appUrl = formatAppUrl(rawAppUrl);
 
@@ -32,9 +33,22 @@ export async function GET(req: NextRequest) {
 
   // Full repo scope for both public and private repositories and webhook access
   const scope = 'repo read:user user:email';
-  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
+  let githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
     callbackUrl
   )}&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`;
 
-  return NextResponse.redirect(githubAuthUrl);
+  // Force GitHub to display the account picker / login prompt when switching accounts
+  if (isSwitchAccount) {
+    githubAuthUrl += `&prompt=select_account`;
+  }
+
+  const response = NextResponse.redirect(githubAuthUrl);
+
+  // Clear previous session cookies when explicitly switching accounts
+  if (isSwitchAccount) {
+    response.cookies.delete('gh_token');
+    response.cookies.delete('gh_installation_id');
+  }
+
+  return response;
 }

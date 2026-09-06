@@ -455,9 +455,9 @@ export default function GitHubProjectSettingsModal({
                         {userRepos.length} repos available
                       </span>
                       <a
-                        href={`/api/github/oauth/connect?projectId=${projectId}&projectKey=${projectKey}`}
+                        href={`/api/github/oauth/connect?projectId=${projectId}&projectKey=${projectKey}&prompt=select_account`}
                         className="text-[11px] text-[#4A154B] hover:underline font-semibold"
-                        title="Grant access to more repositories on GitHub"
+                        title="Switch GitHub account or grant access to more repositories"
                       >
                         Grant access / Switch account
                       </a>
@@ -487,7 +487,7 @@ export default function GitHubProjectSettingsModal({
                               You may need to grant repository access permissions in your GitHub App settings.
                             </p>
                             <a
-                              href={`/api/github/oauth/connect?projectId=${projectId}&projectKey=${projectKey}`}
+                              href={`/api/github/oauth/connect?projectId=${projectId}&projectKey=${projectKey}&prompt=select_account`}
                               className="inline-flex items-center gap-1 text-[#4A154B] hover:underline font-semibold text-xs mt-1"
                             >
                               Configure GitHub Permissions <ExternalLink className="w-3 h-3" />
